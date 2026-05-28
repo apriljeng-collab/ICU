@@ -1,0 +1,53 @@
+name: Scrape ICU Bed Data from MOHW
+
+on:
+  workflow_dispatch:       # manual trigger from GitHub UI
+  schedule:
+    - cron: "0 2 1 * *"   # 02:00 UTC on the 1st of every month
+
+permissions:
+  contents: write
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: claude/festive-gauss-cANya
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install requests openpyxl beautifulsoup4 lxml
+
+      - name: Restore scrape cache
+        uses: actions/cache@v4
+        with:
+          path: icu_results.json
+          key: icu-cache-${{ github.run_id }}
+          restore-keys: icu-cache-
+
+      - name: Test connectivity to MOHW
+        run: python update_icu_beds.py --test 5
+        continue-on-error: true
+
+      - name: Run full scrape
+        run: python update_icu_beds.py
+        env:
+          PYTHONUNBUFFERED: "1"
+
+      - name: Commit updated Excel and cache
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Hospital_Chair_20240731_update.xlsx icu_results.json icu_export.csv
+          git diff --staged --quiet && echo "No changes to commit." || \
+            git commit -m "Auto-update ICU bed data from MOHW ($(date -u '+%Y-%m-%d'))"
+          git push origin claude/festive-gauss-cANya
