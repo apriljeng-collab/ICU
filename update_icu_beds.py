@@ -6,12 +6,16 @@ Install dependencies:
     pip install requests openpyxl beautifulsoup4 lxml
 
 Run:
-    python update_icu_beds.py
-    python update_icu_beds.py --from-cache   # re-apply saved results without re-scraping
+    python update_icu_beds.py                   # full scrape + update Excel
+    python update_icu_beds.py --test            # verify 5 sample hospitals first
+    python update_icu_beds.py --test 10         # verify 10 sample hospitals
+    python update_icu_beds.py --from-cache      # re-apply saved results without re-scraping
+    python update_icu_beds.py --diff            # show changes without writing Excel
+    python update_icu_beds.py --resume          # skip already-cached keys (default when cache exists)
 
 URL pattern (discovered from MOHW website):
     https://openinfo.mohw.gov.tw/web/C02?type=1&basAgencyId=XXXXXXXXXX&zoneCode=A
-    basAgencyId = hospital code padded to 10 digits (e.g. 101090517 → 0101090517)
+    basAgencyId = hospital code padded to 10 digits (e.g. 101090517 -> 0101090517)
     zoneCode    = A for 本院, B/C/D/... for other campuses (tried in order)
 
 The script reads all rows from ALL sheet, fetches current bed counts per
@@ -24,8 +28,10 @@ import time
 import re
 import json
 import sys
+import random
 from pathlib import Path
 from collections import defaultdict
+from typing import Dict, List, Optional, Tuple
 
 import requests
 from bs4 import BeautifulSoup
@@ -54,12 +60,9 @@ SESSION.headers.update(HEADERS)
 
 ZONE_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-# Campus-name → zone letter mapping built from the website's own listing.
-# Populated at runtime by discover_zones(); pre-fill known values here.
-#
+# Campus-name -> zone letter mapping built from the website's own listing.
 # Format: {hospital_code_str: {campus_name: zone_letter}}
-# When unknown, we iterate A→Z until the page returns valid data.
-KNOWN_ZONES: dict[str, dict[str, str]] = {
+KNOWN_ZONES: Dict[str, Dict[str, str]] = {
     "101090517": {
         "仁愛院區": "A",
         "中興院區": "B",
@@ -73,7 +76,6 @@ KNOWN_ZONES: dict[str, dict[str, str]] = {
 
 
 def pad_code(code: str) -> str:
-    """Left-pad hospital code to 10 digits."""
     return code.zfill(10)
 
 
@@ -88,16 +90,16 @@ def hospital_url(code: str, zone: str = "A") -> str:
 # Bed-count extraction
 # ---------------------------------------------------------------------------
 
-_RE_ICU_NUMBER = re.compile(r"加護病床[^數量\d]*[數量：:\s]*(\d+)", re.S)
+_RE_ICU_NUMBER  = re.compile(r"加護病床[^數量\d]*[數量：:\s]*(\d+)", re.S)
 _RE_BURN_NUMBER = re.compile(r"燒傷加護病床[^數量\d]*[數量：:\s]*(\d+)", re.S)
 
 
-def _first_match(pattern: re.Pattern, text: str) -> int | None:
+def _first_match(pattern: "re.Pattern[str]", text: str) -> Optional[int]:
     m = pattern.search(text)
     return int(m.group(1)) if m else None
 
 
-def parse_page(html: str) -> dict | None:
+def parse_page(html: str) -> Optional[dict]:
     """
     Return {"icu": int, "burn_icu": int} or None if not found.
     Tries multiple strategies on the page HTML.
@@ -108,12 +110,11 @@ def parse_page(html: str) -> dict | None:
     for cell in soup.find_all(["th", "td"]):
         cell_text = cell.get_text(strip=True)
         if "加護病床" in cell_text and "燒傷" not in cell_text:
-            # value should be in the next sibling td
             sibling = cell.find_next_sibling(["td", "th"])
             if sibling:
                 nums = re.findall(r"\d+", sibling.get_text())
                 if nums:
-                    icu = int(nums[0])
+                    icu  = int(nums[0])
                     burn = _find_burn_in_soup(soup)
                     return {"icu": icu, "burn_icu": burn or 0}
 
@@ -124,7 +125,7 @@ def parse_page(html: str) -> dict | None:
         burn = _first_match(_RE_BURN_NUMBER, full_text) or 0
         return {"icu": icu, "burn_icu": burn}
 
-    # Strategy 3: embedded JSON (some MOHW pages embed data as JSON)
+    # Strategy 3: embedded JSON / script tags
     for script in soup.find_all("script"):
         content = script.string or ""
         if "加護" in content:
@@ -136,7 +137,7 @@ def parse_page(html: str) -> dict | None:
     return None
 
 
-def _find_burn_in_soup(soup: BeautifulSoup) -> int | None:
+def _find_burn_in_soup(soup: BeautifulSoup) -> Optional[int]:
     for cell in soup.find_all(["th", "td"]):
         if "燒傷" in cell.get_text(strip=True):
             sibling = cell.find_next_sibling(["td", "th"])
@@ -151,16 +152,16 @@ def _find_burn_in_soup(soup: BeautifulSoup) -> int | None:
 # Zone-code discovery
 # ---------------------------------------------------------------------------
 
-def discover_zones(code: str, expected_campuses: list[str]) -> dict[str, str]:
+def discover_zones(code: str, expected_campuses: List[str]) -> Dict[str, str]:
     """
-    For a multi-campus hospital, probe A, B, C, … until we've found all
-    expected_campuses or run out of letters.  Returns {campus_name: zone}.
+    Probe A, B, C, … until we've found all expected_campuses or run out.
+    Returns {campus_name: zone_letter}.
     """
     if code in KNOWN_ZONES:
         return KNOWN_ZONES[code]
 
-    mapping: dict[str, str] = {}
-    found_campuses: set[str] = set()
+    mapping: Dict[str, str] = {}
+    found_campuses: set = set()
 
     for letter in ZONE_LETTERS:
         if len(found_campuses) >= len(expected_campuses):
@@ -171,16 +172,14 @@ def discover_zones(code: str, expected_campuses: list[str]) -> dict[str, str]:
         except requests.RequestException:
             continue
         if resp.status_code != 200:
-            if letter != "A":  # A might just be wrong, keep going
+            if letter != "A":
                 break
             continue
 
         soup = BeautifulSoup(resp.text, "lxml")
         full_text = soup.get_text(" ", strip=True)
 
-        # Find which campus this page is for
         for campus in expected_campuses:
-            # Strip 院區/分院/etc. for fuzzy match
             core = re.sub(r"[院區分院本]+$", "", campus).strip()
             if core and core in full_text:
                 mapping[campus] = letter
@@ -197,19 +196,17 @@ def discover_zones(code: str, expected_campuses: list[str]) -> dict[str, str]:
 # Per-hospital fetching
 # ---------------------------------------------------------------------------
 
-def fetch_hospital(code: str, campus: str) -> dict | None:
+def fetch_hospital(code: str, campus: str) -> Optional[dict]:
     """
     Fetch bed data for one (code, campus) pair.
     Returns {"icu": int, "burn_icu": int} or None.
     """
-    # Determine zone letter
     zone = "A"
     if campus and campus not in ("本院", ""):
         zones = KNOWN_ZONES.get(code, {})
         if campus in zones:
             zone = zones[campus]
         else:
-            # Probe until we find the right campus page
             for letter in ZONE_LETTERS:
                 url = hospital_url(code, letter)
                 try:
@@ -245,47 +242,51 @@ def fetch_hospital(code: str, campus: str) -> dict | None:
 # Excel I/O
 # ---------------------------------------------------------------------------
 
-def read_hospitals() -> list[dict]:
+def read_hospitals() -> List[dict]:
     wb = openpyxl.load_workbook(EXCEL_FILE)
     ws = wb["ALL"]
     hospitals = []
     for i, row in enumerate(ws.iter_rows(min_row=3, values_only=True), start=3):
-        code = row[3]   # col D
-        name = row[4]   # col E
-        campus = row[5] # col F
+        code   = row[3]   # col D
+        name   = row[4]   # col E
+        campus = row[5]   # col F
+        icu    = row[10]  # col K  (baseline value)
         if code:
             hospitals.append({
-                "row":    i,
-                "code":   str(code),
-                "name":   str(name)   if name   else "",
-                "campus": str(campus) if campus else "本院",
+                "row":      i,
+                "code":     str(code),
+                "name":     str(name)   if name   else "",
+                "campus":   str(campus) if campus else "本院",
+                "old_icu":  int(icu) if isinstance(icu, (int, float)) else None,
             })
     return hospitals
 
 
-def _eval_icu(val) -> int | None:
-    """Evaluate an Excel formula or return the numeric value."""
+def _eval_icu(val) -> Optional[int]:
     if isinstance(val, (int, float)):
         return int(val)
     if isinstance(val, str) and val.startswith("="):
         try:
-            return int(eval(val[1:]))
+            return int(eval(val[1:]))  # noqa: S307
         except Exception:
             pass
     return None
 
 
-def update_excel(results: dict[str, dict]):
+def update_excel(results: Dict[str, dict], dry_run: bool = False) -> List[Tuple]:
     """
-    results key = "{code}|{campus}"
     Write ICU counts to ALL sheet columns K and L.
+    Returns list of (row, name, campus, old_icu, new_icu, old_burn, new_burn) for changed rows.
     """
     wb = openpyxl.load_workbook(EXCEL_FILE)
     ws = wb["ALL"]
 
     updated = skipped = unchanged = 0
+    changes = []
+
     for row in ws.iter_rows(min_row=3):
         code   = str(row[3].value) if row[3].value else None
+        name   = str(row[4].value) if row[4].value else ""
         campus = str(row[5].value) if row[5].value else "本院"
         if not code:
             continue
@@ -298,51 +299,126 @@ def update_excel(results: dict[str, dict]):
             old_burn = row[11].value if isinstance(row[11].value, int) else None
 
             if old_icu != new_icu or old_burn != new_burn:
-                row[10].value = new_icu   # col K
-                row[11].value = new_burn  # col L
+                changes.append((row[0].row, name, campus, old_icu, new_icu, old_burn, new_burn))
+                if not dry_run:
+                    row[10].value = new_icu
+                    row[11].value = new_burn
                 updated += 1
             else:
                 unchanged += 1
         else:
             skipped += 1
 
-    wb.save(EXCEL_FILE)
-    print(f"\nSaved {EXCEL_FILE}")
+    if not dry_run:
+        wb.save(EXCEL_FILE)
+        print(f"\nSaved {EXCEL_FILE}")
+    else:
+        print("\n[dry-run] Excel NOT written.")
+
     print(f"  Updated:   {updated}")
     print(f"  Unchanged: {unchanged}")
     print(f"  No data:   {skipped}")
+    return changes
 
 
-def update_excel_from_cache():
+def print_diff(changes: List[Tuple]) -> None:
+    if not changes:
+        print("\nNo changes detected.")
+        return
+    print(f"\n{'Row':>4}  {'Hospital':<28} {'Campus':<12}  {'ICU':>8}  {'Burn':>8}")
+    print("-" * 72)
+    for row_num, name, campus, old_icu, new_icu, old_burn, new_burn in changes:
+        icu_str  = f"{old_icu or '?'} -> {new_icu}"
+        burn_str = f"{old_burn or '?'} -> {new_burn}"
+        print(f"{row_num:>4}  {name[:28]:<28} {campus[:12]:<12}  {icu_str:>8}  {burn_str:>8}")
+
+
+def update_excel_from_cache(dry_run: bool = False) -> None:
     if not CACHE_FILE.exists():
         print(f"Cache file {CACHE_FILE} not found. Run the full scrape first.")
         sys.exit(1)
     with open(CACHE_FILE) as f:
         results = json.load(f)
-    update_excel(results)
+    print(f"Loaded {len(results)} cached results from {CACHE_FILE}.")
+    changes = update_excel(results, dry_run=dry_run)
+    if "--diff" in sys.argv or dry_run:
+        print_diff(changes)
+
+
+# ---------------------------------------------------------------------------
+# Test mode — verify a sample of hospitals before committing to full run
+# ---------------------------------------------------------------------------
+
+def run_test(hospitals: List[dict], n: int = 5) -> bool:
+    """
+    Fetch n random hospitals and report success/failure.
+    Returns True if at least half succeed (connectivity OK).
+    """
+    sample = random.sample(hospitals, min(n, len(hospitals)))
+    print(f"\n--- TEST MODE: sampling {len(sample)} hospitals ---\n")
+    ok = fail = 0
+    for hosp in sample:
+        code   = hosp["code"]
+        campus = hosp["campus"]
+        name   = hosp["name"]
+        print(f"  {code:12s} {campus:10s} {name[:25]:<25}", end="  ", flush=True)
+        data = fetch_hospital(code, campus)
+        if data:
+            print(f"OK  ICU={data['icu']:4d}  Burn={data['burn_icu']}")
+            ok += 1
+        else:
+            print("FAIL")
+            fail += 1
+        time.sleep(0.5)
+
+    print(f"\nTest result: {ok}/{len(sample)} succeeded.")
+    if ok == 0:
+        print("ERROR: No hospitals could be fetched. Check network access to openinfo.mohw.gov.tw.")
+        return False
+    if ok < len(sample) // 2:
+        print("WARNING: More than half of sampled hospitals failed.")
+        return False
+    print("Network access looks good. Proceeding with full run is recommended.")
+    return True
 
 
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
-def main():
-    if "--from-cache" in sys.argv:
-        update_excel_from_cache()
+def main() -> None:
+    args = sys.argv[1:]
+    dry_run = "--diff" in args
+
+    if "--from-cache" in args or dry_run:
+        update_excel_from_cache(dry_run=dry_run)
         return
 
     hospitals = read_hospitals()
     print(f"Processing {len(hospitals)} hospital-campus rows …\n")
 
+    # Test mode
+    if "--test" in args:
+        idx = args.index("--test")
+        n = 5
+        if idx + 1 < len(args) and args[idx + 1].isdigit():
+            n = int(args[idx + 1])
+        ok = run_test(hospitals, n)
+        if not ok:
+            sys.exit(1)
+        cont = input("\nContinue with full scrape? [y/N] ").strip().lower()
+        if cont != "y":
+            sys.exit(0)
+
     # Load partial cache (resume support)
-    results: dict[str, dict] = {}
+    results: Dict[str, dict] = {}
     if CACHE_FILE.exists():
         with open(CACHE_FILE) as f:
             results = json.load(f)
         print(f"Resuming from cache ({len(results)} already done).\n")
 
-    # Pre-discover zones for known multi-campus hospitals
-    multi_campus_codes = defaultdict(list)
+    # Pre-discover zones for multi-campus hospitals not already known
+    multi_campus_codes: Dict[str, List[str]] = defaultdict(list)
     for h in hospitals:
         multi_campus_codes[h["code"]].append(h["campus"])
     for code, campuses in multi_campus_codes.items():
@@ -359,10 +435,17 @@ def main():
 
             if key in results:
                 d = results[key]
-                print(f"[{i:3d}/{len(hospitals)}] {code:12s} {campus:10s} {name[:22]:<22}  (cached  ICU={d['icu']:4d} Burn={d['burn_icu']})")
+                print(
+                    f"[{i:3d}/{len(hospitals)}] {code:12s} {campus:10s} "
+                    f"{name[:22]:<22}  (cached  ICU={d['icu']:4d} Burn={d['burn_icu']})"
+                )
                 continue
 
-            print(f"[{i:3d}/{len(hospitals)}] {code:12s} {campus:10s} {name[:22]:<22}", end="  ", flush=True)
+            print(
+                f"[{i:3d}/{len(hospitals)}] {code:12s} {campus:10s} {name[:22]:<22}",
+                end="  ",
+                flush=True,
+            )
             data = fetch_hospital(code, campus)
 
             if data:
@@ -376,13 +459,16 @@ def main():
             if i % 20 == 0:
                 with open(CACHE_FILE, "w") as f:
                     json.dump(results, f, ensure_ascii=False, indent=2)
+                print(f"  [checkpoint saved at {i}]")
 
     finally:
         with open(CACHE_FILE, "w") as f:
             json.dump(results, f, ensure_ascii=False, indent=2)
         print(f"\nResults cached to {CACHE_FILE}")
 
-    update_excel(results)
+    changes = update_excel(results)
+    if changes:
+        print_diff(changes)
 
 
 if __name__ == "__main__":
