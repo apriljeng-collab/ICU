@@ -1,7 +1,7 @@
 name: Scrape ICU Bed Data from MOHW
 
 on:
-  workflow_dispatch:       # manual trigger from GitHub UI
+  workflow_dispatch:       # manual trigger from GitHub UI → Actions tab
   schedule:
     - cron: "0 2 1 * *"   # 02:00 UTC on the 1st of every month
 
@@ -11,7 +11,7 @@ permissions:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout repository
@@ -19,35 +19,71 @@ jobs:
         with:
           ref: claude/festive-gauss-cANya
 
-      - name: Set up Python
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
 
       - name: Install dependencies
         run: pip install requests openpyxl beautifulsoup4 lxml
 
-      - name: Restore scrape cache
+      - name: Restore previous scrape cache
         uses: actions/cache@v4
         with:
           path: icu_results.json
           key: icu-cache-${{ github.run_id }}
-          restore-keys: icu-cache-
+          restore-keys: |
+            icu-cache-
 
-      - name: Test connectivity to MOHW
+      - name: Verify baseline stats (before)
+        run: |
+          echo "=== Baseline ICU stats ===" && python update_icu_beds.py --stats
+
+      - name: Test MOHW connectivity (5 samples)
+        id: connectivity
         run: python update_icu_beds.py --test 5
         continue-on-error: true
 
-      - name: Run full scrape
+      - name: Abort if connectivity check failed
+        if: steps.connectivity.outcome == 'failure'
+        run: |
+          echo "::error::Cannot reach openinfo.mohw.gov.tw — aborting scrape."
+          exit 1
+
+      - name: Run full scrape (194 hospitals)
         run: python update_icu_beds.py
         env:
           PYTHONUNBUFFERED: "1"
 
-      - name: Commit updated Excel and cache
+      - name: Refresh CSV export
+        run: python update_icu_beds.py --export-csv
+
+      - name: Show diff preview (what changed)
+        run: python update_icu_beds.py --diff
+        continue-on-error: true
+
+      - name: Verify updated stats (after)
+        run: echo "=== Updated ICU stats ===" && python update_icu_beds.py --stats
+
+      - name: Upload icu_results.json as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: icu-results-${{ github.run_id }}
+          path: icu_results.json
+          retention-days: 90
+
+      - name: Commit updated files
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          SCRAPED=$(python3 -c "
+          import json, pathlib
+          d = json.loads(pathlib.Path('icu_results.json').read_text()) if pathlib.Path('icu_results.json').exists() else {}
+          print(len(d))
+          " 2>/dev/null || echo "?")
           git add Hospital_Chair_20240731_update.xlsx icu_results.json icu_export.csv
-          git diff --staged --quiet && echo "No changes to commit." || \
-            git commit -m "Auto-update ICU bed data from MOHW ($(date -u '+%Y-%m-%d'))"
+          git diff --staged --quiet \
+            && echo "No ICU data changed — nothing to commit." \
+            || git commit -m "Auto-update ICU beds: ${SCRAPED}/194 scraped ($(date -u '+%Y-%m-%d'))"
           git push origin claude/festive-gauss-cANya

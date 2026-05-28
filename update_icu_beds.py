@@ -111,7 +111,7 @@ def parse_page(html: str) -> Optional[dict]:
     """
     soup = BeautifulSoup(html, "lxml")
 
-    # Strategy 1: find table rows where the header cell contains 加護病床
+    # Strategy 1: table th/td pairs  (e.g. <th>加護病床數量</th><td>177</td>)
     for cell in soup.find_all(["th", "td"]):
         cell_text = cell.get_text(strip=True)
         if "加護病床" in cell_text and "燒傷" not in cell_text:
@@ -123,14 +123,25 @@ def parse_page(html: str) -> Optional[dict]:
                     burn = _find_burn_in_soup(soup)
                     return {"icu": icu, "burn_icu": burn or 0}
 
-    # Strategy 2: scan full text with regex
+    # Strategy 2: dl/dt+dd definition list  (newer MOHW layout)
+    for dt in soup.find_all("dt"):
+        if "加護病床" in dt.get_text() and "燒傷" not in dt.get_text():
+            dd = dt.find_next_sibling("dd")
+            if dd:
+                nums = re.findall(r"\d+", dd.get_text())
+                if nums:
+                    icu  = int(nums[0])
+                    burn = _find_burn_dt(soup)
+                    return {"icu": icu, "burn_icu": burn or 0}
+
+    # Strategy 3: scan full text with regex
     full_text = soup.get_text(" ", strip=True)
     icu = _first_match(_RE_ICU_NUMBER, full_text)
     if icu is not None:
         burn = _first_match(_RE_BURN_NUMBER, full_text) or 0
         return {"icu": icu, "burn_icu": burn}
 
-    # Strategy 3: embedded JSON / script tags
+    # Strategy 4: embedded JSON / script tags
     for script in soup.find_all("script"):
         content = script.string or ""
         if "加護" in content:
@@ -139,6 +150,17 @@ def parse_page(html: str) -> Optional[dict]:
                 burn = _first_match(_RE_BURN_NUMBER, content) or 0
                 return {"icu": icu, "burn_icu": burn}
 
+    return None
+
+
+def _find_burn_dt(soup: BeautifulSoup) -> Optional[int]:
+    for dt in soup.find_all("dt"):
+        if "燒傷" in dt.get_text():
+            dd = dt.find_next_sibling("dd")
+            if dd:
+                nums = re.findall(r"\d+", dd.get_text())
+                if nums:
+                    return int(nums[0])
     return None
 
 
