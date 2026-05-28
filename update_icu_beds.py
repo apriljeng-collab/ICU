@@ -10,8 +10,10 @@ Run:
     python update_icu_beds.py --test            # verify 5 sample hospitals first
     python update_icu_beds.py --test 10         # verify 10 sample hospitals
     python update_icu_beds.py --from-cache      # re-apply saved results without re-scraping
-    python update_icu_beds.py --diff            # show changes without writing Excel
-    python update_icu_beds.py --resume          # skip already-cached keys (default when cache exists)
+    python update_icu_beds.py --diff            # show changes without writing Excel (dry run)
+    python update_icu_beds.py --stats           # distribution summary of current Excel data
+    python update_icu_beds.py --export-csv      # export current Excel K/L data to icu_export.csv
+    python update_icu_beds.py --import-csv FILE # update Excel from a CSV (code,campus,icu,burn_icu)
 
 URL pattern (discovered from MOHW website):
     https://openinfo.mohw.gov.tw/web/C02?type=1&basAgencyId=XXXXXXXXXX&zoneCode=A
@@ -24,6 +26,7 @@ and column L (燒傷加護病床數).  Progress is cached to icu_results.json
 so you can resume if interrupted.
 """
 
+import csv
 import time
 import re
 import json
@@ -403,6 +406,58 @@ def run_test(hospitals: List[dict], n: int = 5) -> bool:
 # Main
 # ---------------------------------------------------------------------------
 
+def export_csv(hospitals: List[dict], out: Path = Path("icu_export.csv")) -> None:
+    """Export current Excel ICU data to a CSV for manual editing."""
+    with open(out, "w", newline="", encoding="utf-8-sig") as f:
+        writer = csv.writer(f)
+        writer.writerow(["code", "campus", "name", "icu", "burn_icu"])
+        for h in hospitals:
+            writer.writerow([h["code"], h["campus"], h["name"], h["old_icu"] or "", ""])
+    print(f"Exported {len(hospitals)} rows to {out}")
+    print("Edit the 'icu' and 'burn_icu' columns, then run:")
+    print(f"  python update_icu_beds.py --import-csv {out}")
+
+
+def import_csv(csv_path: Path, dry_run: bool = False) -> None:
+    """
+    Load a CSV with columns: code, campus, icu, burn_icu
+    and write the values back to the Excel file.
+    """
+    if not csv_path.exists():
+        print(f"File not found: {csv_path}")
+        sys.exit(1)
+
+    results: Dict[str, dict] = {}
+    skipped_rows = 0
+    with open(csv_path, newline="", encoding="utf-8-sig") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            code   = str(row.get("code", "")).strip()
+            campus = str(row.get("campus", "本院")).strip() or "本院"
+            try:
+                icu  = int(row.get("icu") or 0)
+                burn = int(row.get("burn_icu") or 0)
+            except ValueError:
+                skipped_rows += 1
+                continue
+            if code:
+                results[f"{code}|{campus}"] = {"icu": icu, "burn_icu": burn}
+
+    print(f"Loaded {len(results)} rows from {csv_path} ({skipped_rows} skipped).")
+    # Also merge into cache file for future --from-cache use
+    if not dry_run and CACHE_FILE.exists():
+        with open(CACHE_FILE) as f:
+            existing = json.load(f)
+        existing.update(results)
+        with open(CACHE_FILE, "w") as f:
+            json.dump(existing, f, ensure_ascii=False, indent=2)
+        print(f"Merged into {CACHE_FILE}.")
+
+    changes = update_excel(results, dry_run=dry_run)
+    if changes:
+        print_diff(changes)
+
+
 def print_stats(hospitals: List[dict]) -> None:
     """Print a distribution summary of current ICU bed counts from the Excel."""
     counts = [h["old_icu"] for h in hospitals if h["old_icu"] is not None]
@@ -438,6 +493,19 @@ def main() -> None:
     if "--stats" in args:
         hospitals = read_hospitals()
         print_stats(hospitals)
+        return
+
+    if "--export-csv" in args:
+        hospitals = read_hospitals()
+        export_csv(hospitals)
+        return
+
+    if "--import-csv" in args:
+        idx = args.index("--import-csv")
+        if idx + 1 >= len(args):
+            print("Usage: --import-csv <path-to-csv>")
+            sys.exit(1)
+        import_csv(Path(args[idx + 1]), dry_run=dry_run)
         return
 
     if "--from-cache" in args or dry_run:
