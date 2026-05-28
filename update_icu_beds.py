@@ -15,6 +15,7 @@ Run:
     python update_icu_beds.py --export-csv      # export current Excel K/L data to icu_export.csv
     python update_icu_beds.py --import-csv FILE # update Excel from a CSV (code,campus,icu,burn_icu)
     python update_icu_beds.py --analyze         # cross-sheet data quality report (discrepancies, YoY)
+    python update_icu_beds.py --validate        # check icu_results.json cache for suspicious values
 
 URL pattern (discovered from MOHW website):
     https://openinfo.mohw.gov.tw/web/C02?type=1&basAgencyId=XXXXXXXXXX&zoneCode=A
@@ -425,6 +426,74 @@ def run_test(hospitals: List[dict], n: int = 5) -> bool:
     return True
 
 
+def validate_cache(hospitals: List[dict]) -> None:
+    """
+    Compare icu_results.json cache against the Excel baseline.
+    Flags suspicious entries: drops to 0, large changes (>50%), missing data.
+    """
+    if not CACHE_FILE.exists():
+        print(f"No cache file found ({CACHE_FILE}). Run scrape first.")
+        return
+
+    with open(CACHE_FILE) as f:
+        cache = json.load(f)
+
+    print(f"\nValidating {len(cache)} cached results against Excel baseline …\n")
+
+    issues: List[str] = []
+    ok = warn = err = 0
+
+    for h in hospitals:
+        key = f"{h['code']}|{h['campus']}"
+        baseline = h["old_icu"]
+
+        if key not in cache:
+            issues.append(f"MISS  {h['code']:12}  {h['campus']:10}  "
+                          f"{h['name'][:35]:<35}  (no data scraped)")
+            err += 1
+            continue
+
+        new_icu = cache[key]["icu"]
+
+        # Flag: scraped value is 0 but baseline was non-zero
+        if baseline and baseline > 0 and new_icu == 0:
+            issues.append(f"ZERO  {h['code']:12}  {h['campus']:10}  "
+                          f"{h['name'][:35]:<35}  {baseline}→{new_icu} (⚠ dropped to 0)")
+            err += 1
+            continue
+
+        # Flag: change > 50% of baseline (might be parse error)
+        if baseline and baseline > 0:
+            pct = abs(new_icu - baseline) / baseline
+            if pct > 0.50:
+                issues.append(f"LARGE {h['code']:12}  {h['campus']:10}  "
+                               f"{h['name'][:35]:<35}  {baseline}→{new_icu}"
+                               f" ({pct*100:+.0f}%)")
+                warn += 1
+                continue
+
+        ok += 1
+
+    missing_from_scrape = len(hospitals) - len(cache)
+
+    print(f"  ✓  OK          : {ok}")
+    print(f"  ⚠  Large change : {warn}")
+    print(f"  ✗  Error/zero  : {err}")
+    print(f"  -  Not scraped : {missing_from_scrape}")
+
+    if issues:
+        print(f"\n{'─'*80}")
+        for line in issues[:50]:   # cap at 50 to avoid flooding
+            print(f"  {line}")
+        if len(issues) > 50:
+            print(f"  … and {len(issues)-50} more")
+
+    if err == 0 and warn == 0:
+        print("\n✓ All scraped values look reasonable. Safe to apply with --from-cache.")
+    else:
+        print("\n⚠  Review flagged rows before applying. Use --from-cache when satisfied.")
+
+
 def analyze_sheets() -> None:
     """
     Cross-sheet data quality report:
@@ -626,6 +695,11 @@ def main() -> None:
 
     if "--analyze" in args:
         analyze_sheets()
+        return
+
+    if "--validate" in args:
+        hospitals = read_hospitals()
+        validate_cache(hospitals)
         return
 
     if "--export-csv" in args:
