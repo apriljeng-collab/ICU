@@ -37,6 +37,8 @@ import requests
 from bs4 import BeautifulSoup
 import openpyxl
 
+RETRY_DELAYS = (2, 5, 10)  # seconds between retries (3 attempts total)
+
 EXCEL_FILE = Path("Hospital_Chair_20240731_update.xlsx")
 CACHE_FILE = Path("icu_results.json")
 BASE_URL   = "https://openinfo.mohw.gov.tw"
@@ -196,6 +198,29 @@ def discover_zones(code: str, expected_campuses: List[str]) -> Dict[str, str]:
 # Per-hospital fetching
 # ---------------------------------------------------------------------------
 
+def _get_with_retry(url: str) -> Optional[requests.Response]:
+    """GET with up to 3 retries; handles 429 rate-limiting."""
+    for attempt, delay in enumerate((*RETRY_DELAYS, None), 1):
+        try:
+            resp = SESSION.get(url, timeout=15)
+        except requests.RequestException as exc:
+            if delay is None:
+                print(f"      Network error: {exc}", end="")
+                return None
+            time.sleep(delay)
+            continue
+
+        if resp.status_code == 429:
+            wait = int(resp.headers.get("Retry-After", delay or 30))
+            print(f"      Rate-limited; waiting {wait}s …", end="", flush=True)
+            time.sleep(wait)
+            continue
+
+        return resp
+
+    return None
+
+
 def fetch_hospital(code: str, campus: str) -> Optional[dict]:
     """
     Fetch bed data for one (code, campus) pair.
@@ -208,12 +233,8 @@ def fetch_hospital(code: str, campus: str) -> Optional[dict]:
             zone = zones[campus]
         else:
             for letter in ZONE_LETTERS:
-                url = hospital_url(code, letter)
-                try:
-                    resp = SESSION.get(url, timeout=15)
-                except requests.RequestException:
-                    continue
-                if resp.status_code != 200:
+                resp = _get_with_retry(hospital_url(code, letter))
+                if resp is None or resp.status_code != 200:
                     break
                 soup = BeautifulSoup(resp.text, "lxml")
                 full_text = soup.get_text(" ", strip=True)
@@ -224,13 +245,9 @@ def fetch_hospital(code: str, campus: str) -> Optional[dict]:
                     break
                 time.sleep(0.2)
 
-    url = hospital_url(code, zone)
-    try:
-        resp = SESSION.get(url, timeout=15)
-    except requests.RequestException as e:
-        print(f"      Network error: {e}", end="")
+    resp = _get_with_retry(hospital_url(code, zone))
+    if resp is None:
         return None
-
     if resp.status_code != 200:
         print(f"      HTTP {resp.status_code}", end="")
         return None
@@ -386,9 +403,42 @@ def run_test(hospitals: List[dict], n: int = 5) -> bool:
 # Main
 # ---------------------------------------------------------------------------
 
+def print_stats(hospitals: List[dict]) -> None:
+    """Print a distribution summary of current ICU bed counts from the Excel."""
+    counts = [h["old_icu"] for h in hospitals if h["old_icu"] is not None]
+    total  = sum(counts)
+    mx     = max(counts)
+    mn     = min(counts)
+    avg    = total / len(counts) if counts else 0
+    bands  = [(0, 0), (1, 20), (21, 50), (51, 100), (101, 200), (201, 9999)]
+    labels = ["0 (no ICU)", "1-20", "21-50", "51-100", "101-200", "201+"]
+    print(f"\nICU bed statistics ({len(counts)} hospitals with data):")
+    print(f"  Total beds : {total}")
+    print(f"  Average    : {avg:.1f}  |  Min: {mn}  |  Max: {mx}")
+    print(f"\n  Distribution:")
+    for (lo, hi), label in zip(bands, labels):
+        n = sum(lo <= c <= hi for c in counts)
+        bar = "█" * (n // 2)
+        print(f"    {label:>10}  {n:4d}  {bar}")
+    # Top 10 by ICU count
+    top10 = sorted(
+        [h for h in hospitals if h["old_icu"]],
+        key=lambda h: h["old_icu"],
+        reverse=True,
+    )[:10]
+    print(f"\n  Top 10 by ICU beds:")
+    for h in top10:
+        print(f"    {h['old_icu']:4d}  {h['name'][:30]:<30}  {h['campus']}")
+
+
 def main() -> None:
     args = sys.argv[1:]
     dry_run = "--diff" in args
+
+    if "--stats" in args:
+        hospitals = read_hospitals()
+        print_stats(hospitals)
+        return
 
     if "--from-cache" in args or dry_run:
         update_excel_from_cache(dry_run=dry_run)
