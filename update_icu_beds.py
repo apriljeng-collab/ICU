@@ -14,6 +14,7 @@ Run:
     python update_icu_beds.py --stats           # distribution summary of current Excel data
     python update_icu_beds.py --export-csv      # export current Excel K/L data to icu_export.csv
     python update_icu_beds.py --import-csv FILE # update Excel from a CSV (code,campus,icu,burn_icu)
+    python update_icu_beds.py --analyze         # cross-sheet data quality report (discrepancies, YoY)
 
 URL pattern (discovered from MOHW website):
     https://openinfo.mohw.gov.tw/web/C02?type=1&basAgencyId=XXXXXXXXXX&zoneCode=A
@@ -424,6 +425,100 @@ def run_test(hospitals: List[dict], n: int = 5) -> bool:
     return True
 
 
+def analyze_sheets() -> None:
+    """
+    Cross-sheet data quality report:
+    - Hospitals in 地區醫院-急救責任 with ICU>0 not tracked in ALL
+    - Discrepancies between sheets for shared hospitals
+    - 2023→2024 changes (if 2023區域醫院 sheet present)
+    """
+    wb = openpyxl.load_workbook(EXCEL_FILE)
+    sheets = wb.sheetnames
+
+    def load_sheet(ws, code_col: int, campus_col: int,
+                   icu_col: int, burn_col: int, name_col: int,
+                   start_row: int = 2) -> Dict[str, dict]:
+        data: Dict[str, dict] = {}
+        for row in ws.iter_rows(min_row=start_row, values_only=True):
+            code   = row[code_col]
+            campus = row[campus_col]
+            icu    = row[icu_col]
+            burn   = row[burn_col]
+            name   = row[name_col]
+            if not code:
+                continue
+            key = f"{str(code).zfill(10)}|{str(campus) if campus else '本院'}"
+            data[key] = {
+                "name":  str(name) if name else "",
+                "icu":   int(icu)  if isinstance(icu,  (int, float)) else 0,
+                "burn":  int(burn) if isinstance(burn, (int, float)) else 0,
+            }
+        return data
+
+    all_data  = load_sheet(wb["ALL"], 3, 5, 10, 11, 4, start_row=3)
+    dist_data = load_sheet(wb["地區醫院-急救責任"], 1, 3, 8, 9, 2)
+
+    print(f"\n{'='*70}")
+    print("CROSS-SHEET DATA QUALITY REPORT")
+    print(f"{'='*70}")
+
+    # 1. Missing from ALL but present with ICU>0 in 地區醫院
+    missing = {k: v for k, v in dist_data.items()
+               if k not in all_data and v["icu"] > 0}
+    print(f"\n[1] Hospitals with ICU>0 in 地區醫院 NOT tracked in ALL ({len(missing)}):")
+    if missing:
+        for key, v in sorted(missing.items(), key=lambda x: -x[1]["icu"]):
+            code, campus = key.split("|")
+            print(f"    {code}  {campus:10}  ICU={v['icu']:3d}  {v['name'][:50]}")
+    else:
+        print("    None — all hospitals with ICU>0 are in ALL.")
+
+    # 2. Discrepancies between sheets for shared hospitals
+    common = set(all_data.keys()) & set(dist_data.keys())
+    disc = [(k, all_data[k]["icu"], dist_data[k]["icu"])
+            for k in common if all_data[k]["icu"] != dist_data[k]["icu"]]
+    disc.sort(key=lambda x: abs(x[1] - x[2]), reverse=True)
+    print(f"\n[2] ICU discrepancies between ALL and 地區醫院 ({len(disc)} hospitals):")
+    if disc:
+        for key, icu_all, icu_dist in disc:
+            code, campus = key.split("|")
+            name = all_data[key]["name"]
+            delta = icu_all - icu_dist
+            print(f"    {code}  {campus:10}  ALL={icu_all:3d}  地區={icu_dist:3d}"
+                  f"  delta={delta:+d}  {name[:35]}")
+    else:
+        print("    No discrepancies.")
+
+    # 3. Year-over-year if 2023 sheet exists
+    if "2023區域醫院" in sheets:
+        data_2023 = load_sheet(wb["2023區域醫院"], 2, 4, 8, 9, 3)
+        matched   = set(data_2023.keys()) & set(all_data.keys())
+        yoy = [(k, data_2023[k]["icu"], all_data[k]["icu"])
+               for k in matched
+               if data_2023[k]["icu"] is not None
+               and data_2023[k]["icu"] != all_data[k]["icu"]]
+        yoy.sort(key=lambda x: x[2] - x[1], reverse=True)
+        print(f"\n[3] Year-over-year changes 2023→July 2024 ({len(yoy)} hospitals):")
+        for key, old, new in yoy:
+            code, campus = key.split("|")
+            name  = all_data[key]["name"]
+            delta = new - old
+            print(f"    {code}  {campus:10}  2023={old:3d}  2024={new:3d}"
+                  f"  {delta:+d}  {name[:35]}")
+        unmatched = len(all_data) - len(matched)
+        print(f"    ({unmatched} ALL hospitals have no 2023 counterpart to compare)")
+
+    # 4. Summary
+    total_icu = sum(v["icu"] for v in all_data.values())
+    print(f"\n[4] Summary")
+    print(f"    ALL sheet         : {len(all_data):3d} hospitals  {total_icu:5d} total ICU beds")
+    print(f"    地區醫院 sheet      : {len(dist_data):3d} hospitals  "
+          f"{sum(v['icu'] for v in dist_data.values()):5d} total ICU beds")
+    zero = sum(1 for v in all_data.values() if v["icu"] == 0)
+    print(f"    ALL rows w/ ICU=0 : {zero}")
+    print(f"{'='*70}\n")
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -527,6 +622,10 @@ def main() -> None:
     if "--stats" in args:
         hospitals = read_hospitals()
         print_stats(hospitals)
+        return
+
+    if "--analyze" in args:
+        analyze_sheets()
         return
 
     if "--export-csv" in args:
