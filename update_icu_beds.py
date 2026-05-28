@@ -407,12 +407,24 @@ def run_test(hospitals: List[dict], n: int = 5) -> bool:
 # ---------------------------------------------------------------------------
 
 def export_csv(hospitals: List[dict], out: Path = Path("icu_export.csv")) -> None:
-    """Export current Excel ICU data to a CSV for manual editing."""
+    """Export current Excel ICU data (cols K and L) to a CSV for manual editing."""
+    wb = openpyxl.load_workbook(EXCEL_FILE)
+    ws = wb["ALL"]
+    burn_by_key: Dict[str, int] = {}
+    for row in ws.iter_rows(min_row=3, values_only=True):
+        code   = str(row[3]) if row[3] else None
+        campus = str(row[5]) if row[5] else "本院"
+        burn   = row[11]
+        if code:
+            burn_by_key[f"{code}|{campus}"] = int(burn) if isinstance(burn, (int, float)) else 0
+
     with open(out, "w", newline="", encoding="utf-8-sig") as f:
         writer = csv.writer(f)
         writer.writerow(["code", "campus", "name", "icu", "burn_icu"])
         for h in hospitals:
-            writer.writerow([h["code"], h["campus"], h["name"], h["old_icu"] or "", ""])
+            key  = f"{h['code']}|{h['campus']}"
+            burn = burn_by_key.get(key, 0)
+            writer.writerow([h["code"], h["campus"], h["name"], h["old_icu"] or 0, burn])
     print(f"Exported {len(hospitals)} rows to {out}")
     print("Edit the 'icu' and 'burn_icu' columns, then run:")
     print(f"  python update_icu_beds.py --import-csv {out}")
