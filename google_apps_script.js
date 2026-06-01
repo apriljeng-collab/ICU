@@ -2,21 +2,20 @@
  * Google Apps Script — Scrape live ICU bed data from MOHW for all 194 hospitals.
  *
  * SETUP (one time):
- *  1. Open https://sheets.google.com and create a new spreadsheet.
- *  2. File → Import → upload icu_export.csv → "Replace current sheet" → Import.
- *  3. Rename that sheet to "ICU" (click the tab at the bottom).
- *  4. Extensions → Apps Script → delete any existing code → paste this entire file → Save.
- *  5. Reload the spreadsheet.  A new "🏥 ICU Scraper" menu will appear.
+ *  1. Open https://sheets.google.com and create a NEW blank spreadsheet.
+ *  2. Extensions → Apps Script → delete any existing code → paste this entire file → Save (Ctrl+S).
+ *  3. Reload the spreadsheet.  A new "🏥 ICU Scraper" menu will appear.
  *
- * RUNNING:
- *  1. Click  🏥 ICU Scraper → 1. Scrape ICU data
- *     - Fetches each row's MOHW page (300ms between requests).
+ * RUNNING (in order):
+ *  1. Click  🏥 ICU Scraper → 0. Load hospital list from GitHub
+ *     - Downloads icu_export.csv from GitHub and fills in the sheet automatically.
+ *     - No file import needed.
+ *  2. Click  🏥 ICU Scraper → 1. Scrape ICU data
+ *     - Fetches each row's MOHW page (350ms between requests).
  *     - Auto-pauses after 5 min to avoid Apps Script timeout; re-run to resume.
  *     - Progress saved to columns H (scraped_icu) and I (scraped_burn) and J (status).
- *  2. Click  🏥 ICU Scraper → 2. Email results as CSV
- *     - Sends icu_scraped.csv to your Google account email.
- *  3. Feed the CSV to the Python script:
- *       python update_icu_beds.py --import-csv icu_scraped.csv
+ *  3. Click  🏥 ICU Scraper → 2. Email results as CSV
+ *     - Sends icu_scraped.csv to your Google account email (april.jeng@gmail.com).
  */
 
 "use strict";
@@ -25,6 +24,7 @@
 
 const SHEET_NAME = "ICU";
 const BASE_URL   = "https://openinfo.mohw.gov.tw/web/C02?type=1&basAgencyId={CODE}&zoneCode={ZONE}";
+const CSV_URL    = "https://raw.githubusercontent.com/apriljeng-collab/ICU/claude/festive-gauss-cANya/icu_export.csv";
 
 const KNOWN_ZONES = {
   "0101090517": {
@@ -34,17 +34,62 @@ const KNOWN_ZONES = {
   },
 };
 
-// Column indices in the imported icu_export.csv (1-based)
-// Header row: code, campus, name, icu, burn_icu
+// Column indices (1-based)
 const C_CODE   = 1;  // A
 const C_CAMPUS = 2;  // B
 const C_NAME   = 3;  // C
 const C_ICU    = 4;  // D — original July-2024 baseline
 const C_BURN   = 5;  // E — original July-2024 baseline
+const C_URL    = 6;  // F — mohw_url
 // Output columns appended by this script:
 const C_NEW_ICU  = 8;  // H
 const C_NEW_BURN = 9;  // I
 const C_STATUS   = 10; // J
+
+// ── Step 0: Load hospital list from GitHub ─────────────────────────────────
+
+function loadFromGitHub() {
+  const ui = SpreadsheetApp.getUi();
+
+  let resp;
+  try {
+    resp = UrlFetchApp.fetch(CSV_URL, { muteHttpExceptions: true });
+  } catch (e) {
+    ui.alert("Cannot reach GitHub: " + e);
+    return;
+  }
+
+  if (resp.getResponseCode() !== 200) {
+    ui.alert("GitHub returned HTTP " + resp.getResponseCode() + ". Check that the repository is public.");
+    return;
+  }
+
+  const csv  = resp.getContentText("UTF-8");
+  const rows = Utilities.parseCsv(csv);
+  if (!rows || rows.length < 2) {
+    ui.alert("CSV appears empty or invalid.");
+    return;
+  }
+
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  let   sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_NAME);
+  } else {
+    sheet.clearContents();
+  }
+
+  // Write all rows (header + data)
+  sheet.getRange(1, 1, rows.length, rows[0].length).setValues(rows);
+
+  // Activate the sheet so the user sees it
+  ss.setActiveSheet(sheet);
+
+  ui.alert(
+    `Loaded ${rows.length - 1} hospitals from GitHub.\n\n` +
+    "Next: click  🏥 ICU Scraper → 1. Scrape ICU data"
+  );
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -104,7 +149,7 @@ function extractBeds_(html) {
   return { icu, burn };
 }
 
-// ── Main scraper ───────────────────────────────────────────────────────────
+// ── Step 1: Main scraper ───────────────────────────────────────────────────
 
 function scrapeIcuData() {
   const ss    = SpreadsheetApp.getActiveSpreadsheet();
@@ -112,7 +157,7 @@ function scrapeIcuData() {
   if (!sheet) {
     SpreadsheetApp.getUi().alert(
       `Sheet "${SHEET_NAME}" not found.\n\n` +
-      "Import icu_export.csv and rename the sheet to 'ICU', then try again."
+      "Run  🏥 ICU Scraper → 0. Load hospital list from GitHub  first."
     );
     return;
   }
@@ -126,7 +171,7 @@ function scrapeIcuData() {
   }
 
   const lastRow = sheet.getLastRow();
-  if (lastRow < 2) { SpreadsheetApp.getUi().alert("No data rows found."); return; }
+  if (lastRow < 2) { SpreadsheetApp.getUi().alert("No data rows found. Run step 0 first."); return; }
 
   const allData = sheet.getRange(2, 1, lastRow - 1, C_STATUS).getValues();
 
@@ -153,8 +198,9 @@ function scrapeIcuData() {
         muteHttpExceptions: true,
         followRedirects: true,
         headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; GoogleAppsScript/1.0)",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
           "Accept-Language": "zh-TW,zh;q=0.9,en;q=0.8",
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         },
       });
 
@@ -172,7 +218,6 @@ function scrapeIcuData() {
           failed++;
         }
       } else if (httpCode === 429) {
-        // Rate limited — pause and retry this row
         Utilities.sleep(10000);
         i--;  // retry
         continue;
@@ -191,7 +236,7 @@ function scrapeIcuData() {
     // Flush every 10 rows
     if ((i + 1) % 10 === 0) SpreadsheetApp.flush();
 
-    Utilities.sleep(350);  // ~350ms between requests
+    Utilities.sleep(350);
 
     // Auto-pause before 5-min Apps Script hard limit
     if (Date.now() - startMs > 295000) {
@@ -211,7 +256,7 @@ function scrapeIcuData() {
   );
 }
 
-// ── CSV export ─────────────────────────────────────────────────────────────
+// ── Step 2: CSV export ─────────────────────────────────────────────────────
 
 function emailResultsCsv() {
   const ss    = SpreadsheetApp.getActiveSpreadsheet();
@@ -252,11 +297,10 @@ function emailResultsCsv() {
     [
       `Scraped ${count} hospitals from openinfo.mohw.gov.tw.`,
       "",
-      "To apply results to the Excel file, run:",
-      "  python update_icu_beds.py --import-csv icu_scraped.csv",
+      "Attached: icu_scraped.csv",
       "",
-      "To preview changes without writing:",
-      "  python update_icu_beds.py --import-csv icu_scraped.csv --diff",
+      "To apply results to the Excel file:",
+      "  python update_icu_beds.py --import-csv icu_scraped.csv",
     ].join("\n"),
     { attachments: [blob] }
   );
@@ -269,6 +313,8 @@ function emailResultsCsv() {
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu("🏥 ICU Scraper")
+    .addItem("0. Load hospital list from GitHub", "loadFromGitHub")
+    .addSeparator()
     .addItem("1. Scrape ICU data", "scrapeIcuData")
     .addSeparator()
     .addItem("2. Email results as CSV", "emailResultsCsv")
