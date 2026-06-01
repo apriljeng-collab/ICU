@@ -1,4 +1,4 @@
-name: Scrape ICU Bed Data from MOHW
+name: Scrape ICU Bed Data from MOHW  # rev 2026-06-01
 
 on:
   push:
