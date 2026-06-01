@@ -606,14 +606,16 @@ def export_csv(hospitals: List[dict], out: Path = Path("icu_export.csv")) -> Non
 
     with open(out, "w", newline="", encoding="utf-8-sig") as f:
         writer = csv.writer(f)
-        writer.writerow(["code", "campus", "name", "icu", "burn_icu"])
+        writer.writerow(["code", "campus", "name", "icu", "burn_icu", "mohw_url"])
         for h in hospitals:
-            key  = f"{h['code']}|{h['campus']}"
-            burn = burn_by_key.get(key, 0)
-            writer.writerow([h["code"], h["campus"], h["name"], h["old_icu"] or 0, burn])
+            key     = f"{h['code']}|{h['campus']}"
+            burn    = burn_by_key.get(key, 0)
+            zone    = KNOWN_ZONES.get(h["code"], {}).get(h["campus"], "A") \
+                      if h["campus"] not in ("本院", "") else "A"
+            url     = hospital_url(h["code"], zone)
+            writer.writerow([h["code"], h["campus"], h["name"],
+                             h["old_icu"] or 0, burn, url])
     print(f"Exported {len(hospitals)} rows to {out}")
-    print("Edit the 'icu' and 'burn_icu' columns, then run:")
-    print(f"  python update_icu_beds.py --import-csv {out}")
 
 
 def import_csv(csv_path: Path, dry_run: bool = False) -> None:
