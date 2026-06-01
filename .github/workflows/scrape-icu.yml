@@ -97,7 +97,11 @@ jobs:
           print(len(d))
           " 2>/dev/null || echo "?")
           git add Hospital_Chair_20240731_update.xlsx icu_results.json icu_export.csv
-          git diff --staged --quiet \
-            && echo "No ICU data changed — nothing to commit." \
-            || git commit -m "Auto-update ICU beds: ${SCRAPED}/194 scraped ($(date -u '+%Y-%m-%d')) [skip ci]"
-          git push origin claude/festive-gauss-cANya
+          if git diff --staged --quiet; then
+            echo "No ICU data changed — nothing to commit."
+          else
+            git commit -m "Auto-update ICU beds: ${SCRAPED}/194 scraped ($(date -u '+%Y-%m-%d')) [skip ci]"
+            # Pull-rebase in case branch moved while scrape was running
+            git pull --rebase origin claude/festive-gauss-cANya || true
+            git push origin claude/festive-gauss-cANya
+          fi
