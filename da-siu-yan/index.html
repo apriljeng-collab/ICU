@@ -422,7 +422,7 @@ input[type=text] {
       <div class="audio-ctrl" data-audio></div>
       <button class="switch" id="autoBtn" role="switch" aria-checked="false"><span class="track"></span>自動敲</button>
     </div>
-    <p style="font-size:13px;color:var(--muted)">功德可以解鎖新兵器：10 功德解鎖吱吱槌，接著還有雞毛撢子、大枕頭、鹹魚。</p>
+    <p style="font-size:13px;color:var(--muted)">功德可以解鎖新兵器：10 功德解鎖吱吱槌，接著還有愛的小手、雞毛撢子、拳擊手套、大枕頭、鹹魚、棒球棒。</p>
   </section>
 
   <!-- ===== BOOK ===== -->
@@ -511,15 +511,21 @@ const W = {
   hammer: `<svg viewBox="0 0 64 64"><g transform="rotate(-30 32 32)"><rect x="28" y="22" width="9" height="38" rx="4" fill="#FFC845" stroke="${INK}" stroke-width="3"/><rect x="10" y="6" width="44" height="22" rx="10" fill="#EE5542" stroke="${INK}" stroke-width="3"/><rect x="6" y="9" width="8" height="16" rx="4" fill="#FFC845" stroke="${INK}" stroke-width="2.5"/><rect x="50" y="9" width="8" height="16" rx="4" fill="#FFC845" stroke="${INK}" stroke-width="2.5"/><path d="M18 12 h16" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".7"/></g></svg>`,
   duster: `<svg viewBox="0 0 64 64"><g transform="rotate(-30 32 32)"><rect x="29" y="26" width="7" height="36" rx="3" fill="#B7773F" stroke="${INK}" stroke-width="2.5"/><g stroke="${INK}" stroke-width="2.5"><ellipse cx="32" cy="10" rx="9" ry="9" fill="#FF8FA8"/><ellipse cx="22" cy="18" rx="9" ry="8" fill="#FFC845"/><ellipse cx="42" cy="18" rx="9" ry="8" fill="#6FD3B6"/><ellipse cx="32" cy="24" rx="10" ry="7" fill="#B59BFF"/></g></g></svg>`,
   pillow: `<svg viewBox="0 0 64 64"><g transform="rotate(-18 32 32)"><path d="M8 14 Q32 6 56 14 Q60 32 56 50 Q32 58 8 50 Q4 32 8 14Z" fill="#fff" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/><path d="M14 20 Q32 15 50 20" fill="none" stroke="#FF8FA8" stroke-width="3" stroke-linecap="round"/><circle cx="25" cy="33" r="2.5" fill="${INK}"/><circle cx="39" cy="33" r="2.5" fill="${INK}"/><path d="M28 39 q4 4 8 0" fill="none" stroke="${INK}" stroke-width="2.2" stroke-linecap="round"/><ellipse cx="20" cy="38" rx="4" ry="2.5" fill="#FF8FA8" opacity=".7"/><ellipse cx="44" cy="38" rx="4" ry="2.5" fill="#FF8FA8" opacity=".7"/></g></svg>`,
+  lovehand: `<svg viewBox="0 0 64 64"><g transform="rotate(-35 32 32)"><rect x="29" y="28" width="7" height="34" rx="3" fill="#FF8FA8" stroke="${INK}" stroke-width="2.5"/><g fill="#FFD3DC" stroke="${INK}" stroke-width="2.5"><rect x="20" y="5" width="5.5" height="15" rx="2.75"/><rect x="26.5" y="1" width="5.5" height="17" rx="2.75"/><rect x="33" y="2" width="5.5" height="16" rx="2.75"/><rect x="39.5" y="6" width="5.5" height="13" rx="2.75"/><rect x="19" y="13" width="27" height="18" rx="8"/></g><path d="M32.5 27 c-4.5 -3 -6.5 -7 -3.5 -9 c2 -1.2 3.5 0 3.5 1.2 c0 -1.2 1.5 -2.4 3.5 -1.2 c3 2 1 6 -3.5 9z" fill="#EE5542"/></g></svg>`,
+  glove: `<svg viewBox="0 0 64 64"><g transform="rotate(-20 32 32)"><rect x="18" y="44" width="25" height="15" rx="4" fill="#fff" stroke="${INK}" stroke-width="3"/><path d="M43 50 h-25" stroke="#EE5542" stroke-width="2.5"/><path d="M17 30 C15 12 27 5 37 7 C49 9 53 20 51 32 C50 40 45 46 41 46 L21 46 C18 44 17 38 17 30Z" fill="#EE5542" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/><path d="M18 28 C11 28 8 37 14 42 C18 45 23 41 23 36" fill="#EE5542" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/><path d="M25 15 q9 -5 17 0" stroke="#fff" stroke-width="3.5" fill="none" stroke-linecap="round" opacity=".6"/></g></svg>`,
+  bat: `<svg viewBox="0 0 64 64"><g transform="rotate(-40 32 32)"><path d="M29 59 L29.5 32 C27 20 26 10 32 2 C38 10 37 20 34.5 32 L35 59Z" fill="#E7B07A" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/><rect x="28.8" y="38" width="6.4" height="16" fill="#3B6FD6" opacity=".85"/><rect x="26" y="56" width="12" height="6" rx="2.5" fill="#B7773F" stroke="${INK}" stroke-width="2.5"/><path d="M31 8 C30 14 30 20 31 27" stroke="#fff" stroke-width="2.2" opacity=".6" fill="none" stroke-linecap="round"/></g></svg>`,
   fish: `<svg viewBox="0 0 64 64"><g transform="rotate(-40 32 32)"><path d="M6 32 Q22 14 46 26 L58 16 L56 32 L58 48 L46 38 Q22 50 6 32Z" fill="#E8C27A" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/><path d="M22 24 q4 8 0 16 M30 23 q4 9 0 18 M38 25 q3 7 0 14" fill="none" stroke="${INK}" stroke-width="1.6" opacity=".5"/><path d="M11 30 l4 4 M15 30 l-4 4" stroke="${INK}" stroke-width="2.2" stroke-linecap="round"/></g></svg>`,
 };
 const WEAPONS = [
   { id: "slipper", name: "藍白拖", cost: 0, words: ["啪！", "噼啪！", "拍！"], snd: "slap", f: 1400, big: false },
   { id: "fan", name: "紙扇", cost: 0, words: ["拍！", "啪！", "嗖！"], snd: "slap", f: 2600, big: false },
   { id: "hammer", name: "吱吱槌", cost: 10, words: ["吱！", "啾啾！", "吱吱！"], snd: "squeak", big: false },
+  { id: "lovehand", name: "愛的小手", cost: 20, words: ["啪！", "打手心！", "愛你喔！", "乖一點！"], snd: "lovehand", big: false },
   { id: "duster", name: "雞毛撢子", cost: 36, words: ["嗖嗖！", "刷！", "掃！"], snd: "swish", big: false },
+  { id: "glove", name: "拳擊手套", cost: 54, words: ["碰！", "左勾拳！", "右勾拳！", "KO！"], snd: "punch", big: true },
   { id: "pillow", name: "大枕頭", cost: 72, words: ["噗！", "嘭！", "pok！"], snd: "poof", big: true },
   { id: "fish", name: "鹹魚", cost: 108, words: ["啪嗒！", "piak！", "鹹！"], snd: "slap", f: 700, big: true },
+  { id: "bat", name: "棒球棒", cost: 150, words: ["鏗！", "全壘打！", "匡！", "飛出去！"], snd: "bat", big: true },
 ];
 const wById = (id) => WEAPONS.find((w) => w.id === id) || WEAPONS[0];
 
@@ -650,6 +656,11 @@ const SFX = {
   unlock() { notes([72, 79, 84, 88, 91], 0.07, "triangle", 0.2, 0.35); noise(8000, 1, 0.1, 0.5, "highpass", 0.2); },
   breathIn() { tone("sine", 220, 330, 0.08, 3.6, 0, SFXBUS, 0.4); },
   breathOut() { tone("sine", 330, 220, 0.07, 5.4, 0, SFXBUS, 0.3); },
+  lovehand() { noise(3200, 1.4, 0.85, 0.06); tone("sine", 140, 80, 0.25, 0.05); tone("sine", 1500, 2300, 0.14, 0.07, 0.05); tone("sine", 1900, 2600, 0.11, 0.08, 0.13); },
+  punch() { noise(260, 0.8, 0.95, 0.16, "lowpass"); tone("sine", 120, 42, 0.95, 0.22); noise(1300, 1, 0.3, 0.05); },
+  bell() { [0, 0.16].forEach((d) => { tone("sine", 1180, null, 0.22, 1.1, d); tone("sine", 2950, null, 0.06, 0.5, d); }); },
+  bat() { noise(500, 1, 0.35, 0.1, "bandpass", 0, SFXBUS, 2600); noise(2900, 5, 1, 0.05, "bandpass", 0.08); tone("sine", 1080, 920, 0.5, 0.07, 0.08); tone("triangle", 540, 470, 0.3, 0.14, 0.08); },
+  homerun() { noise(1400, 0.5, 0.22, 1.1, "bandpass", 0.1); notes([67, 72, 76, 79, null, 76, 79], 0.1, "square", 0.07, 0.16); },
   reset() { notes([79, 74, 71, 67], 0.08, "triangle", 0.18, 0.2); },
 };
 function play(name, arg) { if (!S.sound) return; try { SFX[name](arg); } catch (e) {} }
@@ -881,6 +892,8 @@ function hit(x, y) {
 
   play(w.snd, w); buzz(w.big ? 25 : 12);
   if (milestone) setTimeout(() => play("boing"), 90);
+  if (w.id === "glove" && B.hits % 10 === 0) setTimeout(() => play("bell"), 150);
+  if (w.id === "bat" && B.hits % 10 === 0) setTimeout(() => play("homerun"), 150);
   if (B.combo >= 10 && B.combo % 10 === 0) play("combo", B.combo);
   updateBeat();
   if (B.hits === 36) $("#finishBtn").classList.add("ready");
