@@ -84,7 +84,7 @@ p { margin: 0; line-height: 1.6; }
 .card { background: var(--card); border: 2.5px solid var(--ink); border-radius: var(--r-big); padding: 18px; }
 
 /* ---------- home ---------- */
-.hero { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 8px; padding-top: 8px; }
+.hero { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 8px; margin-top: -6px; }
 .hero h1 { font-size: clamp(54px, 17vw, 76px); line-height: .95; letter-spacing: .02em; }
 .hero h1 .hl { color: var(--lantern); }
 .hero .peek { width: 112px; transform: rotate(8deg); filter: drop-shadow(0 6px 0 rgba(59,42,54,.12)); animation: bob 2.4s ease-in-out infinite; }
@@ -253,6 +253,11 @@ input[type=text] {
 
 /* ---------- book ---------- */
 .book-head h1 { font-size: 40px; }
+.book-head, .topline { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.audio-ctrl { display: flex; gap: 8px; flex: none; }
+.audio-ctrl .icon-btn { width: 38px; height: 38px; }
+.audio-ctrl .icon-btn svg { width: 19px; height: 19px; }
+.audio-ctrl .icon-btn[aria-pressed="false"] { opacity: .5; }
 .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .stat-row div { background: var(--card); border: 2.5px solid var(--ink); border-radius: var(--r-mid); padding: 10px; text-align: center; }
 .stat-row b { display: block; font-family: var(--f-display); font-weight: 400; font-size: 28px; font-variant-numeric: tabular-nums; }
@@ -320,9 +325,9 @@ input[type=text] {
 
   <!-- ===== HOME ===== -->
   <section class="screen" id="s-home" aria-label="開壇">
+    <div class="topline"><div class="eyebrow">驚蟄 · 祭白虎 · 隨身版</div><div class="audio-ctrl" data-audio></div></div>
     <div class="hero">
       <div>
-        <div class="eyebrow">驚蟄 · 祭白虎 · 隨身版</div>
         <h1>開心<br><span class="hl">打小人</span></h1>
       </div>
       <div class="peek" aria-hidden="true" data-villain-mini></div>
@@ -362,7 +367,7 @@ input[type=text] {
         <div class="eyebrow">正在打的是</div>
         <h2 id="beatName">小人</h2>
       </div>
-      <button class="icon-btn" id="soundBtn" aria-label="聲音開關" aria-pressed="true"></button>
+      <div class="audio-ctrl" data-audio></div>
     </div>
 
     <div class="counter">
@@ -393,6 +398,7 @@ input[type=text] {
         <div class="eyebrow">打完要收尾</div>
         <h2>收功三部曲</h2>
       </div>
+      <div class="audio-ctrl" data-audio></div>
     </div>
     <div class="steps" id="steps"><span>① 祭白虎</span><span>② 化小人</span><span>③ 擲聖杯</span></div>
     <div class="ritual-stage" id="ritualStage"></div>
@@ -413,6 +419,7 @@ input[type=text] {
     </div>
     <div class="fish-row">
       <div class="today" id="fToday">今天敲了 0 下</div>
+      <div class="audio-ctrl" data-audio></div>
       <button class="switch" id="autoBtn" role="switch" aria-checked="false"><span class="track"></span>自動敲</button>
     </div>
     <p style="font-size:13px;color:var(--muted)">功德可以解鎖新兵器：10 功德解鎖吱吱槌，接著還有雞毛撢子、大枕頭、鹹魚。</p>
@@ -421,8 +428,8 @@ input[type=text] {
   <!-- ===== BOOK ===== -->
   <section class="screen" id="s-book" aria-label="心情簿" hidden>
     <div class="book-head">
-      <div class="eyebrow">大吉大利 · 一筆勾銷</div>
-      <h1>心情簿</h1>
+      <div><div class="eyebrow">大吉大利 · 一筆勾銷</div><h1>心情簿</h1></div>
+      <div class="audio-ctrl" data-audio></div>
     </div>
     <div class="stat-row">
       <div><b id="bHits">0</b><span>累積打了</span></div>
@@ -481,7 +488,7 @@ const INK = "#3B2A36";
 /* ---------------- storage ---------------- */
 const KEY = "da-siu-yan-v1";
 const todayStr = () => new Date().toISOString().slice(0, 10);
-const defaults = () => ({ merit: 0, hits: 0, cleared: 0, fishDay: todayStr(), fishToday: 0, history: [], sound: true, weapon: "slipper", lastType: "colleague" });
+const defaults = () => ({ merit: 0, hits: 0, cleared: 0, fishDay: todayStr(), fishToday: 0, history: [], sound: true, music: true, weapon: "slipper", lastType: "colleague" });
 let S = defaults();
 try { const raw = localStorage.getItem(KEY); if (raw) S = Object.assign(defaults(), JSON.parse(raw)); } catch (e) {}
 if (S.fishDay !== todayStr()) { S.fishDay = todayStr(); S.fishToday = 0; }
@@ -581,46 +588,150 @@ function villainSVG(name, acc, mini) {
 function applyAcc(root, acc) { $$("[data-acc]", root).forEach((g) => g.setAttribute("visibility", g.dataset.acc === acc ? "visible" : "hidden")); }
 
 /* ---------------- audio ---------------- */
-let AC = null, noiseBuf = null;
+let AC = null, noiseBuf = null, SFXBUS = null, MUSBUS = null;
 function ac() {
   if (!AC) {
     try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; }
-    noiseBuf = AC.createBuffer(1, AC.sampleRate * 0.6, AC.sampleRate);
+    noiseBuf = AC.createBuffer(1, AC.sampleRate * 1.5, AC.sampleRate);
     const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    const comp = AC.createDynamicsCompressor(); comp.threshold.value = -12; comp.connect(AC.destination);
+    SFXBUS = AC.createGain(); SFXBUS.gain.value = 0.9; SFXBUS.connect(comp);
+    MUSBUS = AC.createGain(); MUSBUS.gain.value = 0; MUSBUS.connect(comp);
   }
-  if (AC.state === "suspended") AC.resume();
+  if (AC.state === "suspended" && !document.hidden) AC.resume();
   return AC;
 }
+const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
 function env(g, t, peak, a, dcy) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + dcy); }
-function noise(freq, q, peak, dcy, type = "bandpass") {
-  const c = ac(); if (!c) return; const t = c.currentTime;
-  const s = c.createBufferSource(); s.buffer = noiseBuf;
-  const f = c.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
-  const g = c.createGain(); env(g, t, peak, 0.004, dcy);
-  s.connect(f).connect(g).connect(c.destination); s.start(t); s.stop(t + dcy + 0.05);
-}
-function tone(type, f0, f1, peak, dur, delay = 0) {
+function noise(freq, q, peak, dcy, type = "bandpass", delay = 0, out = SFXBUS, f1 = 0) {
   const c = ac(); if (!c) return; const t = c.currentTime + delay;
-  const o = c.createOscillator(); o.type = type; o.frequency.setValueAtTime(f0, t); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
-  const g = c.createGain(); env(g, t, peak, 0.005, dur);
-  o.connect(g).connect(c.destination); o.start(t); o.stop(t + dur + 0.05);
+  const s = c.createBufferSource(); s.buffer = noiseBuf;
+  const f = c.createBiquadFilter(); f.type = type; f.frequency.setValueAtTime(freq, t); f.Q.value = q;
+  if (f1) f.frequency.exponentialRampToValueAtTime(f1, t + dcy);
+  const g = c.createGain(); env(g, t, peak, 0.004, dcy);
+  s.connect(f).connect(g).connect(out); s.start(t); s.stop(t + dcy + 0.05);
 }
+function tone(type, f0, f1, peak, dur, delay = 0, out = SFXBUS, atk = 0.005) {
+  const c = ac(); if (!c) return; const t = c.currentTime + delay;
+  const o = c.createOscillator(); o.type = type; o.frequency.setValueAtTime(f0, t); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + atk + dur);
+  const g = c.createGain(); env(g, t, peak, atk, dur);
+  o.connect(g).connect(out); o.start(t); o.stop(t + atk + dur + 0.05);
+}
+function notes(list, step, type = "triangle", peak = 0.2, dur = 0.25) { list.forEach((m, i) => m && tone(type, mtof(m), null, peak, dur, i * step)); }
 const SFX = {
   slap(w) { noise(w.f || 1400, 0.9, 0.9, 0.12); tone("sine", 180, 70, 0.4, 0.08); },
-  squeak() { const c = ac(); if (!c) return; const t = c.currentTime; const o = c.createOscillator(); o.type = "square"; o.frequency.setValueAtTime(900, t); o.frequency.linearRampToValueAtTime(1600, t + 0.06); o.frequency.linearRampToValueAtTime(800, t + 0.16); const f = c.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 2400; const g = c.createGain(); env(g, t, 0.18, 0.01, 0.17); o.connect(f).connect(g).connect(c.destination); o.start(t); o.stop(t + 0.25); noise(900, 1, 0.3, 0.05); },
+  squeak() { const c = ac(); if (!c) return; const t = c.currentTime; const o = c.createOscillator(); o.type = "square"; o.frequency.setValueAtTime(900, t); o.frequency.linearRampToValueAtTime(1600, t + 0.06); o.frequency.linearRampToValueAtTime(800, t + 0.16); const f = c.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 2400; const g = c.createGain(); env(g, t, 0.18, 0.01, 0.17); o.connect(f).connect(g).connect(SFXBUS); o.start(t); o.stop(t + 0.25); noise(900, 1, 0.3, 0.05); },
   swish() { noise(3800, 0.6, 0.5, 0.22, "highpass"); noise(1800, 1.2, 0.3, 0.12); },
   poof() { noise(500, 0.7, 0.9, 0.2, "lowpass"); tone("sine", 120, 50, 0.6, 0.18); },
   wood() { tone("sine", 760, 640, 0.7, 0.12); tone("sine", 1520, 1300, 0.15, 0.05); noise(2400, 3, 0.25, 0.03); },
   chime() { [880, 1320, 1760].forEach((f, i) => tone("sine", f, null, 0.18, 1.2, i * 0.09)); },
-  roar() { const c = ac(); if (!c) return; const t = c.currentTime; const o = c.createOscillator(); o.type = "sawtooth"; o.frequency.setValueAtTime(260, t); o.frequency.exponentialRampToValueAtTime(140, t + 0.45); const f = c.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 900; const g = c.createGain(); env(g, t, 0.22, 0.05, 0.45); o.connect(f).connect(g).connect(c.destination); o.start(t); o.stop(t + 0.6); },
-  chomp() { noise(900, 1.5, 0.5, 0.06); setTimeout(() => noise(800, 1.5, 0.5, 0.06), 140); },
-  fire() { noise(400, 0.5, 0.35, 1.4, "lowpass"); noise(2500, 0.8, 0.12, 1.2); },
-  clack() { noise(1800, 4, 0.6, 0.05); setTimeout(() => noise(1500, 4, 0.5, 0.05), 90); },
+  tap() { tone("sine", 520, 880, 0.3, 0.07); },
+  blip() { tone("triangle", 880, null, 0.25, 0.06); tone("triangle", 1320, null, 0.2, 0.08, 0.05); },
+  tab() { tone("sine", 660, null, 0.22, 0.08); tone("sine", 990, null, 0.22, 0.12, 0.06); },
+  back() { tone("sine", 880, null, 0.22, 0.08); tone("sine", 587, null, 0.22, 0.12, 0.06); },
+  toggle() { noise(3000, 2, 0.3, 0.03); tone("square", 1200, null, 0.06, 0.03); },
+  equip() { notes([72, 76, 79, 84], 0.05, "triangle", 0.22, 0.18); noise(6000, 1, 0.12, 0.08, "highpass"); },
+  bonk() { tone("square", 220, 110, 0.15, 0.14); tone("sine", 160, 90, 0.4, 0.12); },
+  start() { for (let i = 0; i < 10; i++) noise(180 + i * 12, 1, 0.2 + i * 0.03, 0.06, "lowpass", i * 0.05); tone("sine", 196, 190, 0.5, 1.4, 0.5); tone("sine", 392, null, 0.15, 1.0, 0.5); notes([67, 72, 76, 79], 0.07, "triangle", 0.16, 0.3); },
+  combo(n) { const base = 72 + Math.min(12, Math.floor(n / 10) * 2); notes([base, base + 4, base + 7, base + 12], 0.045, "square", 0.07, 0.12); },
+  boing() { const c = ac(); if (!c) return; const t = c.currentTime; const o = c.createOscillator(); o.type = "sine"; o.frequency.setValueAtTime(180, t); o.frequency.exponentialRampToValueAtTime(620, t + 0.12); o.frequency.exponentialRampToValueAtTime(300, t + 0.3); const l = c.createOscillator(); l.frequency.value = 18; const lg = c.createGain(); lg.gain.value = 40; l.connect(lg).connect(o.frequency); const g = c.createGain(); env(g, t, 0.35, 0.01, 0.32); o.connect(g).connect(SFXBUS); o.start(t); l.start(t); o.stop(t + 0.4); l.stop(t + 0.4); },
+  quip() { [[820, 1100], [1000, 760]].forEach(([a, b], i) => { tone("sine", a, b, 0.22, 0.1, i * 0.13); tone("triangle", a * 2, b * 2, 0.04, 0.1, i * 0.13); }); },
+  fanfare() { notes([72, 76, 79, 84, null, 79, 84], 0.11, "triangle", 0.22, 0.3); [60, 64, 67, 72].forEach((m) => tone("sine", mtof(m), null, 0.08, 1.3, 0.66)); noise(7000, 1, 0.08, 0.6, "highpass", 0.66); },
+  whoosh() { noise(400, 1.2, 0.45, 0.35, "bandpass", 0, SFXBUS, 3000); },
+  chomp() { noise(900, 1.5, 0.5, 0.06); noise(800, 1.5, 0.5, 0.06, "bandpass", 0.14); noise(850, 1.5, 0.45, 0.06, "bandpass", 0.28); },
+  purr() { for (let i = 0; i < 8; i++) tone("sawtooth", 70, 62, 0.06, 0.07, i * 0.09); tone("sine", 600, 900, 0.18, 0.12, 0.8); tone("sine", 900, 700, 0.18, 0.16, 0.95); },
+  roar() { const c = ac(); if (!c) return; const t = c.currentTime; const o = c.createOscillator(); o.type = "sawtooth"; o.frequency.setValueAtTime(380, t); o.frequency.exponentialRampToValueAtTime(220, t + 0.4); const f = c.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 1200; const g = c.createGain(); env(g, t, 0.18, 0.05, 0.4); o.connect(f).connect(g).connect(SFXBUS); o.start(t); o.stop(t + 0.55); },
+  fire() { noise(300, 0.5, 0.35, 1.5, "lowpass", 0, SFXBUS, 900); for (let i = 0; i < 14; i++) noise(rand(1500, 4000), 3, rand(0.1, 0.3), 0.02, "bandpass", rand(0, 1.5)); },
+  twinkle() { for (let i = 0; i < 8; i++) tone("sine", mtof(pick([84, 86, 88, 91, 93, 96])), null, 0.1, 0.4, i * 0.07); },
+  clack() { noise(1800, 4, 0.6, 0.05); noise(1500, 4, 0.5, 0.05, "bandpass", 0.09); noise(1650, 4, 0.25, 0.04, "bandpass", 0.17); },
+  holy() { notes([79, 84, 88, 91], 0.09, "sine", 0.2, 0.7); tone("sine", mtof(96), null, 0.06, 1.2, 0.36); },
+  laugh() { [0, 0.12, 0.24, 0.36].forEach((d, i) => tone("sine", 700 + i * 90, 1000 + i * 90, 0.18, 0.07, d)); },
+  sad() { [[311, 293], [293, 277], [277, 220]].forEach(([a, b], i) => { const c = ac(); if (!c) return; const t = c.currentTime + i * 0.32; const o = c.createOscillator(); o.type = "sawtooth"; o.frequency.setValueAtTime(a, t); o.frequency.linearRampToValueAtTime(b, t + (i === 2 ? 0.6 : 0.26)); const f = c.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 900; const g = c.createGain(); env(g, t, 0.12, 0.03, i === 2 ? 0.6 : 0.26); o.connect(f).connect(g).connect(SFXBUS); o.start(t); o.stop(t + 0.8); }); },
+  unlock() { notes([72, 79, 84, 88, 91], 0.07, "triangle", 0.2, 0.35); noise(8000, 1, 0.1, 0.5, "highpass", 0.2); },
+  breathIn() { tone("sine", 220, 330, 0.08, 3.6, 0, SFXBUS, 0.4); },
+  breathOut() { tone("sine", 330, 220, 0.07, 5.4, 0, SFXBUS, 0.3); },
+  reset() { notes([79, 74, 71, 67], 0.08, "triangle", 0.18, 0.2); },
 };
 function play(name, arg) { if (!S.sound) return; try { SFX[name](arg); } catch (e) {} }
 function buzz(ms) { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} }
 
+/* ---------------- background music (generated, loops) ---------------- */
+const _ = null;
+const SONGS = {
+  happy: { bpm: 128, vol: 0.5,
+    mel: [72,76,79,76, 81,79,76,_,  76,_,74,72, 69,72,74,_,  72,74,76,79, 81,_,79,76,  74,_,79,_, 74,72,74,_,
+          79,81,84,81, 79,76,79,_,  81,_,79,76, 74,76,72,_,  72,74,76,_, 79,76,74,72,  74,76,74,71, 72,_,_,_],
+    bass: [48,45,41,43,48,45,41,43], chords: [[60,64,67],[57,60,64],[57,60,65],[55,59,62]] },
+  calm: { bpm: 76, vol: 0.55,
+    mel: [74,_,_,78, _,81,_,_, 83,_,81,_, 78,_,_,_,  76,_,_,78, _,74,_,_, 71,_,74,_, _,_,_,_,
+          81,_,_,83, _,86,_,_, 83,_,81,_, 78,_,76,_,  74,_,_,_, 78,_,76,_, 74,_,_,_, _,_,_,_],
+    bass: [50,50,47,47,43,43,45,45], chords: [[62,66,69],[59,62,66],[55,59,62],[57,61,64]] },
+};
+const M = { want: "happy", song: null, step: 0, next: 0, timer: 0 };
+function mNote(type, midi, t, peak, dcy, atk = 0.005) {
+  const o = AC.createOscillator(); o.type = type; o.frequency.value = mtof(midi);
+  const g = AC.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + atk); g.gain.exponentialRampToValueAtTime(0.0001, t + atk + dcy);
+  o.connect(g).connect(MUSBUS); o.start(t); o.stop(t + atk + dcy + 0.05);
+}
+function mNoise(t, peak, dcy, freq) {
+  const s = AC.createBufferSource(); s.buffer = noiseBuf; const f = AC.createBiquadFilter(); f.type = "highpass"; f.frequency.value = freq;
+  const g = AC.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t + dcy);
+  s.connect(f).connect(g).connect(MUSBUS); s.start(t, rand(0, 1)); s.stop(t + dcy + 0.02);
+}
+function schedule() {
+  const song = SONGS[M.song]; if (!song) return;
+  const spb = 60 / song.bpm / 2;
+  while (M.next < AC.currentTime + 0.15) {
+    const t = M.next, i = M.step % song.mel.length, n = song.mel[i], bar = Math.floor(i / 8);
+    if (M.song === "happy") {
+      if (n) { mNote("sine", n, t, 0.22, 0.32); mNote("sine", n + 24, t, 0.03, 0.06); }
+      if (i % 8 === 0 || i % 8 === 4) mNote("triangle", song.bass[bar % 8] + (i % 8 === 4 ? 7 : 0), t, 0.28, 0.28);
+      if (i % 4 === 2) song.chords[bar % 4].forEach((m) => mNote("triangle", m, t, 0.035, 0.18));
+      if (i % 2 === 1) mNoise(t, 0.035, 0.04, 7000);
+      if (i % 4 === 0) { const o = AC.createOscillator(), g = AC.createGain(); o.frequency.setValueAtTime(130, t); o.frequency.exponentialRampToValueAtTime(50, t + 0.1); g.gain.setValueAtTime(0.25, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12); o.connect(g).connect(MUSBUS); o.start(t); o.stop(t + 0.15); }
+    } else {
+      if (n) { mNote("sine", n, t, 0.2, 1.3); mNote("triangle", n + 12, t, 0.02, 0.25); }
+      if (i % 8 === 0) mNote("sine", song.bass[bar % 8], t, 0.2, 2.2, 0.05);
+      if (i % 16 === 0) song.chords[(i / 16) % 4].forEach((m) => mNote("sine", m, t, 0.03, 5.5, 1.2));
+      if (i % 16 === 14) mNoise(t, 0.012, 0.6, 9000);
+    }
+    M.next += spb; M.step++;
+  }
+}
+function musicUpdate() {
+  if (!AC) return;
+  const on = S.music && !document.hidden;
+  const g = MUSBUS.gain, now = AC.currentTime;
+  if (!on) { g.cancelScheduledValues(now); g.setTargetAtTime(0, now, 0.15); clearInterval(M.timer); M.timer = 0; M.song = null; return; }
+  if (M.song === M.want && M.timer) return;
+  g.cancelScheduledValues(now); g.setTargetAtTime(0, now, 0.08);
+  clearInterval(M.timer); M.timer = 0;
+  setTimeout(() => {
+    if (!S.music || document.hidden) return;
+    M.song = M.want; M.step = 0; M.next = AC.currentTime + 0.05;
+    const t = AC.currentTime; MUSBUS.gain.cancelScheduledValues(t); MUSBUS.gain.setTargetAtTime(0.16 * SONGS[M.song].vol / 0.5, t, 0.4);
+    schedule(); M.timer = setInterval(schedule, 30);
+  }, 350);
+}
+function setSong(name) { M.want = name; musicUpdate(); }
+document.addEventListener("pointerdown", () => { const fresh = !AC; ac(); if (fresh || !M.timer) musicUpdate(); }, true);
+document.addEventListener("visibilitychange", () => { if (!AC) return; if (document.hidden) { musicUpdate(); AC.suspend(); } else { AC.resume(); musicUpdate(); } });
+
 const SOUND_ON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>`;
+const MUSIC_ON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6.5" cy="18" r="2.5" fill="currentColor"/><circle cx="17.5" cy="16" r="2.5" fill="currentColor"/></svg>`;
+const MUSIC_OFF = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6.5" cy="18" r="2.5" fill="currentColor"/><circle cx="17.5" cy="16" r="2.5" fill="currentColor"/><path d="M3 3l18 18"/></svg>`;
+function renderAudioCtrls() {
+  $$("[data-audio]").forEach((el) => {
+    el.innerHTML = `<button class="icon-btn" data-act="music" aria-pressed="${S.music}" aria-label="背景音樂">${S.music ? MUSIC_ON : MUSIC_OFF}</button><button class="icon-btn" data-act="sfx" aria-pressed="${S.sound}" aria-label="音效">${S.sound ? SOUND_ON : SOUND_OFF}</button>`;
+  });
+}
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  ac();
+  if (b.dataset.act === "music") { S.music = !S.music; toast(S.music ? "背景音樂：開" : "背景音樂：關"); musicUpdate(); }
+  else { S.sound = !S.sound; toast(S.sound ? "音效：開" : "音效：關"); }
+  save(); renderAudioCtrls(); play("toggle");
+});
 const SOUND_OFF = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M17 9l5 6M22 9l-5 6"/></svg>`;
 
 /* ---------------- toast & confetti ---------------- */
@@ -643,12 +754,13 @@ function show(name) {
   const tab = name === "beat" || name === "ritual" ? "home" : name;
   $$("#tabs button").forEach((b) => { if (b.dataset.tab === tab) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
   if (name !== "fish") setAuto(false);
+  setSong(name === "home" || name === "beat" ? "happy" : "calm");
   if (name === "home") renderHome();
   if (name === "fish") renderFish();
   if (name === "book") renderBook();
   screens[name].scrollTop = 0;
 }
-$$("#tabs button").forEach((b) => b.addEventListener("click", () => show(b.dataset.tab)));
+$$("#tabs button").forEach((b) => b.addEventListener("click", () => { play("tab"); show(b.dataset.tab); }));
 
 /* ---------------- home ---------------- */
 let curType = S.lastType;
@@ -657,7 +769,7 @@ function renderChips() {
 }
 $("#typeChips").addEventListener("click", (e) => {
   const b = e.target.closest("[data-type]"); if (!b) return;
-  curType = b.dataset.type; renderChips(); applyAcc($("[data-villain-mini]"), typeOf(curType).acc);
+  curType = b.dataset.type; play("blip"); renderChips(); applyAcc($("[data-villain-mini]"), typeOf(curType).acc);
 });
 const typeOf = (id) => TYPES.find((t) => t.id === id) || TYPES[4];
 function renderHome() {
@@ -694,13 +806,11 @@ function startBeat() {
   $("#finishBtn").classList.remove("ready");
   renderWeapons(); updateBeat(); show("beat");
 }
-$("#startBtn").addEventListener("click", () => { ac(); startBeat(); });
+$("#startBtn").addEventListener("click", () => { ac(); play("start"); startBeat(); });
 $("#villainName").addEventListener("keydown", (e) => { if (e.key === "Enter") { ac(); startBeat(); } });
-$("#backBtn").addEventListener("click", () => show("home"));
+$("#backBtn").addEventListener("click", () => { play("back"); show("home"); });
 
-function renderSoundBtn() { const b = $("#soundBtn"); b.innerHTML = S.sound ? SOUND_ON : SOUND_OFF; b.setAttribute("aria-pressed", String(S.sound)); }
-$("#soundBtn").addEventListener("click", () => { S.sound = !S.sound; save(); renderSoundBtn(); toast(S.sound ? "聲音已開啟" : "靜音模式"); });
-renderSoundBtn();
+renderAudioCtrls();
 
 function renderWeapons() {
   if (wById(S.weapon).cost > S.merit) S.weapon = "slipper";
@@ -712,8 +822,8 @@ function renderWeapons() {
 $("#weaponBar").addEventListener("click", (e) => {
   const b = e.target.closest("[data-w]"); if (!b) return;
   const w = wById(b.dataset.w);
-  if (w.cost > S.merit) { toast(`去敲木魚累積功德，還差 ${w.cost - S.merit} 就能解鎖${w.name}`); return; }
-  S.weapon = w.id; save(); renderWeapons(); toast(`換成${w.name}`);
+  if (w.cost > S.merit) { play("bonk"); toast(`去敲木魚累積功德，還差 ${w.cost - S.merit} 就能解鎖${w.name}`); return; }
+  S.weapon = w.id; save(); play("equip"); renderWeapons(); toast(`換成${w.name}`);
 });
 
 function setVis(sel, on) { const el = $(sel, villainEl); if (el) el.setAttribute("visibility", on ? "visible" : "hidden"); }
@@ -739,6 +849,7 @@ function hit(x, y) {
   const now = performance.now();
   B.combo = now - B.last < 450 ? B.combo + 1 : 1; B.last = now;
   B.hits++; S.hits++; save();
+  const milestone = [8, 20, 25, 35, 45, 50, 70, 90].includes(B.hits);
 
   // villain reaction
   villainEl.style.setProperty("--r", (Math.random() < .5 ? -1 : 1) * rand(3, w.big ? 9 : 6) + "deg");
@@ -766,12 +877,14 @@ function hit(x, y) {
   if (B.combo >= 5) { if (!cb) { cb = document.createElement("div"); cb.className = "combo"; fx.appendChild(cb); } cb.textContent = `連擊 ×${B.combo}`; clearTimeout(B.comboT); B.comboT = setTimeout(() => cb && cb.remove(), 700); }
   // chant + quip
   if (B.hits % 7 === 1) { const c = $("#chant"); c.textContent = CHANTS[B.chantI++ % CHANTS.length]; c.classList.remove("pop"); void c.offsetWidth; c.classList.add("pop"); }
-  if (B.hits % 11 === 0) { const q = document.createElement("div"); q.className = "quip"; q.textContent = pick(QUIPS); fx.appendChild(q); setTimeout(() => q.remove(), 1650); }
+  if (B.hits % 11 === 0) { const q = document.createElement("div"); q.className = "quip"; q.textContent = pick(QUIPS); fx.appendChild(q); setTimeout(() => q.remove(), 1650); setTimeout(() => play("quip"), 120); }
 
   play(w.snd, w); buzz(w.big ? 25 : 12);
+  if (milestone) setTimeout(() => play("boing"), 90);
+  if (B.combo >= 10 && B.combo % 10 === 0) play("combo", B.combo);
   updateBeat();
   if (B.hits === 36) $("#finishBtn").classList.add("ready");
-  if (B.hits === GOAL && !B.celebrated) { B.celebrated = true; confetti(50); play("chime"); toast("打滿 108 下，功德圓滿！可以收功了"); }
+  if (B.hits === GOAL && !B.celebrated) { B.celebrated = true; confetti(50); play("fanfare"); toast("打滿 108 下，功德圓滿！可以收功了"); }
 }
 stage.addEventListener("pointerdown", (e) => {
   e.preventDefault(); ac();
@@ -782,8 +895,8 @@ stage.addEventListener("keydown", (e) => { if (e.key === " " || e.key === "Enter
 stage.tabIndex = 0;
 
 $("#finishBtn").addEventListener("click", () => {
-  if (!B || B.hits < 1) { toast("還沒打喔！多打幾下再收功"); return; }
-  startRitual();
+  if (!B || B.hits < 1) { play("bonk"); toast("還沒打喔！多打幾下再收功"); return; }
+  play("tap"); startRitual();
 });
 
 /* ---------------- ritual ---------------- */
@@ -823,12 +936,12 @@ function stepTiger() {
   setStep(0);
   RS.innerHTML = `<h2>祭白虎</h2><p>白虎主口舌是非。餵牠吃塊肥豬肉，牠吃飽了就不會再找你麻煩。</p>${TIGER}<button class="btn btn-red" id="feed">餵牠吃豬肉</button>`;
   $("#feed", RS).addEventListener("click", (e) => {
-    e.currentTarget.disabled = true; ac();
+    e.currentTarget.disabled = true; ac(); play("whoosh");
     const p = document.createElement("div"); p.className = "pork"; p.innerHTML = PORK; RS.appendChild(p);
     setTimeout(() => {
       p.remove(); const t = $("#tiger", RS); t.classList.add("chomp"); play("chomp");
       $("#tEyes", RS).setAttribute("visibility", "hidden"); $("#tHappy", RS).setAttribute("visibility", "visible");
-      setTimeout(() => { play("roar"); RS.querySelector("p").textContent = "白虎吃飽了，說以後不會再幫小人找你麻煩。"; e.target.replaceWith(Object.assign(document.createElement("button"), { className: "btn btn-jade", textContent: "下一步", onclick: stepBurn })); }, 700);
+      setTimeout(() => { play("purr"); setTimeout(() => play("roar"), 1100); RS.querySelector("p").textContent = "白虎吃飽了，說以後不會再幫小人找你麻煩。"; e.target.replaceWith(Object.assign(document.createElement("button"), { className: "btn btn-jade", textContent: "下一步", onclick: () => { play("tap"); stepBurn(); } })); }, 700);
     }, 680);
   });
 }
@@ -850,9 +963,9 @@ function stepBurn() {
         s.style.left = "50%"; s.style.top = "50%"; s.style.setProperty("--dx", rand(-130, 130) + "px"); s.style.setProperty("--dy", rand(-160, 40) + "px");
         RS.appendChild(s); setTimeout(() => s.remove(), 1500);
       }
-      play("chime");
+      play("twinkle");
       RS.querySelector("p").textContent = "化掉了！壞事都變成星星飛走了。";
-      e.target.replaceWith(Object.assign(document.createElement("button"), { className: "btn btn-jade", textContent: "下一步", onclick: stepBlocks }));
+      e.target.replaceWith(Object.assign(document.createElement("button"), { className: "btn btn-jade", textContent: "下一步", onclick: () => { play("tap"); stepBlocks(); } }));
     }, 1700);
   });
 }
@@ -866,7 +979,7 @@ function stepBlocks() {
   $("#throw", RS).addEventListener("click", throwBlocks);
 }
 function throwBlocks(e) {
-  const btn = e.currentTarget; btn.disabled = true; R.tries++;
+  const btn = e.currentTarget; btn.disabled = true; R.tries++; play("whoosh");
   let a = Math.random() < .5, b = Math.random() < .5;
   if (R.tries >= 3 || (a !== b)) { a = true; b = false; if (Math.random() < .5) [a, b] = [b, a]; }
   const box = $("#blocks", RS);
@@ -877,9 +990,10 @@ function throwBlocks(e) {
     box.innerHTML = BLOCK(a) + BLOCK(b); play("clack"); buzz(20);
     const res = $("#res", RS);
     if (a !== b) {
-      res.textContent = "聖杯！神明說：沒問題！"; res.style.color = "var(--jade)";
+      res.textContent = "聖杯！神明說：沒問題！"; res.style.color = "var(--jade)"; setTimeout(() => play("holy"), 200);
       setTimeout(finishRitual, 1100);
     } else {
+      setTimeout(() => play(a ? "laugh" : "sad"), 200);
       res.textContent = a ? "笑杯：神明笑著說，再擲一次" : "陰杯：誠意還不夠，再擲一次";
       res.style.color = "var(--muted)"; btn.disabled = false; btn.textContent = "再擲一次";
     }
@@ -891,7 +1005,7 @@ function finishRitual() {
   S.merit += 10; S.cleared++;
   S.history.unshift({ name: B.name, type: B.type, hits: B.hits, at: Date.now() });
   S.history = S.history.slice(0, 50); save();
-  confetti(60); play("chime");
+  confetti(60); play("fanfare");
   RS.innerHTML = `<div class="blessing">
       <div class="eyebrow">化解完成 · 大吉大利</div>
       <div class="big">${pick(AFFIRM)}</div>
@@ -902,8 +1016,8 @@ function finishRitual() {
       <button class="btn btn-paper" style="flex:1" id="toHome">回首頁</button>
       <button class="btn btn-jade" style="flex:1" id="toFish">去敲木魚</button>
     </div>`;
-  $("#toHome", RS).onclick = () => { $("#villainName").value = ""; show("home"); };
-  $("#toFish", RS).onclick = () => show("fish");
+  $("#toHome", RS).onclick = () => { play("back"); $("#villainName").value = ""; show("home"); };
+  $("#toFish", RS).onclick = () => { play("tab"); show("fish"); };
   B = null;
 }
 
@@ -937,9 +1051,9 @@ function tok() {
   $("#fishFx").appendChild(f); setTimeout(() => f.remove(), 1150);
   play("wood"); buzz(8);
   renderFish();
-  if (S.merit % 108 === 0) { confetti(40); play("chime"); toast(pick(BLESS)); }
+  if (S.merit % 108 === 0) { confetti(40); play("fanfare"); toast(pick(BLESS)); }
   const unlocked = WEAPONS.find((w) => w.cost === S.merit && w.cost > 0);
-  if (unlocked) toast(`解鎖新兵器：${unlocked.name}！`);
+  if (unlocked) { play("unlock"); toast(`解鎖新兵器：${unlocked.name}！`); }
 }
 $("#fishStage").addEventListener("pointerdown", (e) => { e.preventDefault(); ac(); tok(); });
 $("#fishStage").tabIndex = 0;
@@ -949,7 +1063,7 @@ function setAuto(on) {
   clearInterval(autoT); $("#autoBtn").setAttribute("aria-checked", String(on));
   if (on) { ac(); autoT = setInterval(tok, 900); }
 }
-$("#autoBtn").addEventListener("click", () => setAuto($("#autoBtn").getAttribute("aria-checked") !== "true"));
+$("#autoBtn").addEventListener("click", () => { play("toggle"); setAuto($("#autoBtn").getAttribute("aria-checked") !== "true"); });
 
 /* ---------------- book ---------------- */
 function fmtDate(ts) { const d = new Date(ts); return `${d.getMonth() + 1}月${d.getDate()}日 ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; }
@@ -968,10 +1082,10 @@ function renderBook() {
 }
 function resetRowIdle() {
   $("#resetRow").innerHTML = `<button class="btn btn-paper btn-sm" id="resetBtn">清除所有紀錄</button>`;
-  $("#resetBtn").onclick = () => {
+  $("#resetBtn").onclick = () => { play("tap");
     $("#resetRow").innerHTML = `<span>確定要清除所有功德和紀錄？</span><button class="btn btn-red btn-sm" id="resetYes">清除</button><button class="btn btn-paper btn-sm" id="resetNo">先不要</button>`;
-    $("#resetYes").onclick = () => { const snd = S.sound; S = defaults(); S.sound = snd; save(); renderBook(); toast("已清除，重新開始"); };
-    $("#resetNo").onclick = resetRowIdle;
+    $("#resetYes").onclick = () => { play("reset"); const snd = S.sound, mus = S.music; S = defaults(); S.sound = snd; S.music = mus; save(); renderBook(); toast("已清除，重新開始"); };
+    $("#resetNo").onclick = () => { play("back"); resetRowIdle(); };
   };
 }
 
@@ -979,11 +1093,11 @@ let breathT = [];
 $("#breathBtn").addEventListener("click", () => {
   const btn = $("#breathBtn"), ball = $("#ball"), lbl = $("#breathLbl");
   if (btn.dataset.on) { breathT.forEach(clearTimeout); breathT = []; delete btn.dataset.on; btn.textContent = "開始"; ball.className = "ball"; lbl.textContent = "準備好了嗎？"; return; }
-  btn.dataset.on = "1"; btn.textContent = "停止";
+  btn.dataset.on = "1"; btn.textContent = "停止"; play("tap");
   const cycles = 6; let t = 0;
   for (let i = 0; i < cycles; i++) {
-    breathT.push(setTimeout(() => { ball.className = "ball in"; lbl.textContent = "吸氣…"; }, t)); t += 4000;
-    breathT.push(setTimeout(() => { ball.className = "ball out"; lbl.textContent = "慢慢吐氣…"; }, t)); t += 6000;
+    breathT.push(setTimeout(() => { ball.className = "ball in"; lbl.textContent = "吸氣…"; play("breathIn"); }, t)); t += 4000;
+    breathT.push(setTimeout(() => { ball.className = "ball out"; lbl.textContent = "慢慢吐氣…"; play("breathOut"); }, t)); t += 6000;
   }
   breathT.push(setTimeout(() => { ball.className = "ball"; lbl.textContent = "做得好"; delete btn.dataset.on; btn.textContent = "再來一次"; play("chime"); }, t));
 });
