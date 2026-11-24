@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-Hant-HK">
+<html lang="zh-Hant-TW">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
@@ -14,7 +14,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&display=swap">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@400;700;900&display=swap">
 <style>
-/* Layout: one-screen phone app — a 糖水舖-bright paper altar; screens swap in place, tab bar pinned to the bottom edge */
+/* Layout: one-screen phone app — a dessert-shop-bright paper altar; screens swap in place, tab bar pinned to the bottom edge */
 :root {
   --lychee: #FFE3E8;      /* page ground, soft lychee pink */
   --mango: #FFC845;       /* paper charm yellow */
@@ -322,31 +322,31 @@ input[type=text] {
   <section class="screen" id="s-home" aria-label="開壇">
     <div class="hero">
       <div>
-        <div class="eyebrow">驚蟄 · 鵝頸橋底 · 隨身版</div>
+        <div class="eyebrow">驚蟄 · 祭白虎 · 隨身版</div>
         <h1>開心<br><span class="hl">打小人</span></h1>
       </div>
       <div class="peek" aria-hidden="true" data-villain-mini></div>
     </div>
 
     <div class="gift" id="giftNote">
-      <b>送俾辛苦咗嘅你</b>
-      受咗氣唔好收埋喺心度。喺度打幾下、敲幾下木魚，出完氣，記得好好照顧自己。
+      <b>送給辛苦了的你</b>
+      受了委屈不要悶在心裡。在這裡打幾下、敲幾下木魚，氣出完了，記得好好照顧自己。
     </div>
 
     <label class="field" for="villainName">
-      小人叫咩名？<small>寫花名、代號都得，淨係你自己睇到。</small>
-      <input type="text" id="villainName" maxlength="12" placeholder="例如：個陷害我嗰個" autocomplete="off">
+      小人叫什麼名字？<small>寫綽號、代號都可以，只有你自己看得到。</small>
+      <input type="text" id="villainName" maxlength="12" placeholder="例如：陷害我的那個人" autocomplete="off">
     </label>
 
     <div class="field">
-      佢係邊類小人？
+      他是哪一種小人？
       <div class="chips" id="typeChips" role="group" aria-label="小人類型"></div>
     </div>
 
-    <button class="btn btn-red btn-wide" id="startBtn">開壇，打佢！</button>
+    <button class="btn btn-red btn-wide" id="startBtn">開壇，開打！</button>
 
     <div class="mini-stats">
-      <div><b id="hTotalHits">0</b><span>累積打咗（下）</span></div>
+      <div><b id="hTotalHits">0</b><span>累積打了（下）</span></div>
       <div><b id="hMerit">0</b><span>累積功德</span></div>
       <div><b id="hCleared">0</b><span>化解小人（個）</span></div>
     </div>
@@ -359,7 +359,7 @@ input[type=text] {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
       </button>
       <div class="who">
-        <div class="eyebrow">而家打緊</div>
+        <div class="eyebrow">正在打的是</div>
         <h2 id="beatName">小人</h2>
       </div>
       <button class="icon-btn" id="soundBtn" aria-label="聲音開關" aria-pressed="true"></button>
@@ -371,15 +371,15 @@ input[type=text] {
       <small id="hitGoal">目標 108 下</small>
     </div>
 
-    <div class="chant" id="chant">撳落小人度，開始打佢！</div>
+    <div class="chant" id="chant">點小人開始打！</div>
 
-    <div class="stage" id="stage" role="button" aria-label="撳一下打小人">
+    <div class="stage" id="stage" role="button" aria-label="點一下打小人">
       <div class="mat"></div>
       <div class="villain" id="villain"></div>
       <div class="fx" id="fx"></div>
     </div>
 
-    <div class="weapons" id="weaponBar" role="group" aria-label="揀兵器"></div>
+    <div class="weapons" id="weaponBar" role="group" aria-label="選兵器"></div>
 
     <div class="beat-actions">
       <button class="btn btn-jade" id="finishBtn">收功化解</button>
@@ -407,25 +407,25 @@ input[type=text] {
       </div>
       <div class="merit-total"><b id="fMerit">0</b><span>累積功德</span></div>
     </div>
-    <div class="fish-stage" id="fishStage" role="button" aria-label="撳一下敲木魚">
+    <div class="fish-stage" id="fishStage" role="button" aria-label="點一下敲木魚">
       <div class="fish-wrap" id="fishWrap"></div>
       <div class="fx" id="fishFx"></div>
     </div>
     <div class="fish-row">
-      <div class="today" id="fToday">今日敲咗 0 下</div>
+      <div class="today" id="fToday">今天敲了 0 下</div>
       <button class="switch" id="autoBtn" role="switch" aria-checked="false"><span class="track"></span>自動敲</button>
     </div>
-    <p style="font-size:13px;color:var(--muted)">功德可以解鎖新兵器：10 功德解鎖膠錘仔，之後仲有雞毛掃、大枕頭、鹹魚。</p>
+    <p style="font-size:13px;color:var(--muted)">功德可以解鎖新兵器：10 功德解鎖吱吱槌，接著還有雞毛撢子、大枕頭、鹹魚。</p>
   </section>
 
   <!-- ===== BOOK ===== -->
   <section class="screen" id="s-book" aria-label="心情簿" hidden>
     <div class="book-head">
-      <div class="eyebrow">大吉利是 · 一筆勾銷</div>
+      <div class="eyebrow">大吉大利 · 一筆勾銷</div>
       <h1>心情簿</h1>
     </div>
     <div class="stat-row">
-      <div><b id="bHits">0</b><span>累積打咗</span></div>
+      <div><b id="bHits">0</b><span>累積打了</span></div>
       <div><b id="bMerit">0</b><span>累積功德</span></div>
       <div><b id="bCleared">0</b><span>化解小人</span></div>
     </div>
@@ -438,7 +438,7 @@ input[type=text] {
 
     <div class="card breath">
       <div class="section-title" style="width:100%">深呼吸一分鐘 <small>吸 4 秒 · 呼 6 秒</small></div>
-      <div class="breath-ring"><div class="ball" id="ball"></div><div class="lbl" id="breathLbl">準備好未？</div></div>
+      <div class="breath-ring"><div class="ball" id="ball"></div><div class="lbl" id="breathLbl">準備好了嗎？</div></div>
       <button class="btn btn-jade btn-sm" id="breathBtn">開始</button>
     </div>
 
@@ -447,8 +447,8 @@ input[type=text] {
     </div>
 
     <p class="care">
-      打小人係民間習俗，玩完當放低。如果呢排心情一直好差、瞓唔着，唔使自己頂住，搵信得過嘅人傾下，或者打去
-      精神健康支援熱線 <b>18111</b>（24 小時）、撒瑪利亞防止自殺會 <b>2389 2222</b>。
+      打小人是民間習俗，玩完就放下吧。如果最近心情一直很差、睡不好，不用一個人硬撐，找信任的人聊聊，或撥打
+      安心專線 <b>1925</b>（24 小時）、生命線 <b>1995</b>、張老師專線 <b>1980</b>。
     </p>
   </section>
 
@@ -491,15 +491,15 @@ const save = () => { clearTimeout(saveT); saveT = setTimeout(() => { try { local
 /* ---------------- villain types ---------------- */
 const TYPES = [
   { id: "colleague", label: "心機同事", acc: "glasses" },
-  { id: "boss", label: "衰老闆", acc: "tie" },
-  { id: "ex", label: "前度", acc: "heart" },
-  { id: "gossip", label: "是非精", acc: "mouth" },
+  { id: "boss", label: "機車老闆", acc: "tie" },
+  { id: "ex", label: "前任", acc: "heart" },
+  { id: "gossip", label: "愛造謠的", acc: "mouth" },
   { id: "generic", label: "無名小人", acc: "" },
 ];
 
 /* ---------------- weapons (inline svg) ---------------- */
 const W = {
-  slipper: `<svg viewBox="0 0 64 64"><g transform="rotate(-35 32 32)"><rect x="20" y="3" width="24" height="58" rx="12" fill="#6FD3B6" stroke="${INK}" stroke-width="3"/><rect x="24" y="8" width="16" height="48" rx="8" fill="#A8EBD8"/><path d="M20 24 Q32 38 44 24" fill="none" stroke="#EE5542" stroke-width="7" stroke-linecap="round"/></g></svg>`,
+  slipper: `<svg viewBox="0 0 64 64"><g transform="rotate(-35 32 32)"><rect x="20" y="3" width="24" height="58" rx="12" fill="#F4F6FA" stroke="${INK}" stroke-width="3"/><rect x="24" y="8" width="16" height="48" rx="8" fill="#DDE5F2"/><path d="M20 24 Q32 38 44 24" fill="none" stroke="#2F6FD6" stroke-width="7" stroke-linecap="round"/></g></svg>`,
   fan: `<svg viewBox="0 0 64 64"><path d="M32 58 L5 24 A36 36 0 0 1 59 24 Z" fill="#FFF1B8" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/><g stroke="${INK}" stroke-width="1.6" opacity=".55"><path d="M32 58 L16 14"/><path d="M32 58 L32 10"/><path d="M32 58 L48 14"/><path d="M32 58 L9 20"/><path d="M32 58 L55 20"/></g><circle cx="22" cy="28" r="4" fill="#EE5542"/><circle cx="40" cy="22" r="3" fill="#EE5542"/><circle cx="32" cy="57" r="4" fill="#EE5542" stroke="${INK}" stroke-width="2"/></svg>`,
   hammer: `<svg viewBox="0 0 64 64"><g transform="rotate(-30 32 32)"><rect x="28" y="22" width="9" height="38" rx="4" fill="#FFC845" stroke="${INK}" stroke-width="3"/><rect x="10" y="6" width="44" height="22" rx="10" fill="#EE5542" stroke="${INK}" stroke-width="3"/><rect x="6" y="9" width="8" height="16" rx="4" fill="#FFC845" stroke="${INK}" stroke-width="2.5"/><rect x="50" y="9" width="8" height="16" rx="4" fill="#FFC845" stroke="${INK}" stroke-width="2.5"/><path d="M18 12 h16" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".7"/></g></svg>`,
   duster: `<svg viewBox="0 0 64 64"><g transform="rotate(-30 32 32)"><rect x="29" y="26" width="7" height="36" rx="3" fill="#B7773F" stroke="${INK}" stroke-width="2.5"/><g stroke="${INK}" stroke-width="2.5"><ellipse cx="32" cy="10" rx="9" ry="9" fill="#FF8FA8"/><ellipse cx="22" cy="18" rx="9" ry="8" fill="#FFC845"/><ellipse cx="42" cy="18" rx="9" ry="8" fill="#6FD3B6"/><ellipse cx="32" cy="24" rx="10" ry="7" fill="#B59BFF"/></g></g></svg>`,
@@ -507,10 +507,10 @@ const W = {
   fish: `<svg viewBox="0 0 64 64"><g transform="rotate(-40 32 32)"><path d="M6 32 Q22 14 46 26 L58 16 L56 32 L58 48 L46 38 Q22 50 6 32Z" fill="#E8C27A" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/><path d="M22 24 q4 8 0 16 M30 23 q4 9 0 18 M38 25 q3 7 0 14" fill="none" stroke="${INK}" stroke-width="1.6" opacity=".5"/><path d="M11 30 l4 4 M15 30 l-4 4" stroke="${INK}" stroke-width="2.2" stroke-linecap="round"/></g></svg>`,
 };
 const WEAPONS = [
-  { id: "slipper", name: "拖鞋", cost: 0, words: ["啪！", "噼啪！", "拍！"], snd: "slap", f: 1400, big: false },
+  { id: "slipper", name: "藍白拖", cost: 0, words: ["啪！", "噼啪！", "拍！"], snd: "slap", f: 1400, big: false },
   { id: "fan", name: "紙扇", cost: 0, words: ["拍！", "啪！", "嗖！"], snd: "slap", f: 2600, big: false },
-  { id: "hammer", name: "膠錘仔", cost: 10, words: ["吱！", "啤啤！", "吱吱！"], snd: "squeak", big: false },
-  { id: "duster", name: "雞毛掃", cost: 36, words: ["嗖嗖！", "刷！", "掃！"], snd: "swish", big: false },
+  { id: "hammer", name: "吱吱槌", cost: 10, words: ["吱！", "啾啾！", "吱吱！"], snd: "squeak", big: false },
+  { id: "duster", name: "雞毛撢子", cost: 36, words: ["嗖嗖！", "刷！", "掃！"], snd: "swish", big: false },
   { id: "pillow", name: "大枕頭", cost: 72, words: ["噗！", "嘭！", "pok！"], snd: "poof", big: true },
   { id: "fish", name: "鹹魚", cost: 108, words: ["啪嗒！", "piak！", "鹹！"], snd: "slap", f: 700, big: true },
 ];
@@ -670,16 +670,16 @@ renderChips();
 
 /* ---------------- beat ---------------- */
 const CHANTS = [
-  "打你個小人頭，打到你有氣冇定抖",
-  "打你個小人面，打到你以後唔敢再亂嚟",
-  "打你個小人口，打到你講是講非冇人收",
-  "打你個小人手，打到你有功都唔敢偷",
-  "打你個小人腳，打到你蝦人都蝦唔着",
-  "打你個小人肚，打到你成肚壞水吐番出嚟",
-  "打你個小人心，打到你以後識做人",
-  "打走霉運，貴人快啲嚟",
+  "打你個小人頭，讓你從此不敢再出頭",
+  "打你個小人嘴，讓你說人是非自己倒楣",
+  "打你個小人眼，讓你眼紅別人通通看不見",
+  "打你個小人手，讓你搶來的功勞通通溜走",
+  "打你個小人腳，讓你想害人一步都走不了",
+  "打你個小人肚，讓你一肚子壞水全吐出",
+  "打你個小人心，讓你從此學會當好人",
+  "打走霉運，貴人快快來",
 ];
-const QUIPS = ["哎呀！", "唔好打啦～", "我知錯啦！", "下次唔敢啦…", "好痛呀！", "救命呀～", "對唔住囉！", "我收聲啦！"];
+const QUIPS = ["哎呀！", "不要打了啦～", "我知道錯了！", "下次不敢了…", "好痛喔！", "救命啊～", "對不起嘛！", "我閉嘴就是了！"];
 let B = null; // current session
 const villainEl = $("#villain"), stage = $("#stage"), fx = $("#fx");
 
@@ -690,7 +690,7 @@ function startBeat() {
   $("#beatName").textContent = name;
   villainEl.innerHTML = villainSVG(name, typeOf(curType).acc);
   applyAcc(villainEl, typeOf(curType).acc);
-  $("#chant").textContent = "撳落小人度，開始打佢！";
+  $("#chant").textContent = "點小人開始打！";
   $("#finishBtn").classList.remove("ready");
   renderWeapons(); updateBeat(); show("beat");
 }
@@ -699,7 +699,7 @@ $("#villainName").addEventListener("keydown", (e) => { if (e.key === "Enter") { 
 $("#backBtn").addEventListener("click", () => show("home"));
 
 function renderSoundBtn() { const b = $("#soundBtn"); b.innerHTML = S.sound ? SOUND_ON : SOUND_OFF; b.setAttribute("aria-pressed", String(S.sound)); }
-$("#soundBtn").addEventListener("click", () => { S.sound = !S.sound; save(); renderSoundBtn(); toast(S.sound ? "聲音已開" : "靜音模式"); });
+$("#soundBtn").addEventListener("click", () => { S.sound = !S.sound; save(); renderSoundBtn(); toast(S.sound ? "聲音已開啟" : "靜音模式"); });
 renderSoundBtn();
 
 function renderWeapons() {
@@ -712,8 +712,8 @@ function renderWeapons() {
 $("#weaponBar").addEventListener("click", (e) => {
   const b = e.target.closest("[data-w]"); if (!b) return;
   const w = wById(b.dataset.w);
-  if (w.cost > S.merit) { toast(`去敲木魚儲功德，仲差 ${w.cost - S.merit} 就解鎖${w.name}`); return; }
-  S.weapon = w.id; save(); renderWeapons(); toast(`換咗${w.name}`);
+  if (w.cost > S.merit) { toast(`去敲木魚累積功德，還差 ${w.cost - S.merit} 就能解鎖${w.name}`); return; }
+  S.weapon = w.id; save(); renderWeapons(); toast(`換成${w.name}`);
 });
 
 function setVis(sel, on) { const el = $(sel, villainEl); if (el) el.setAttribute("visibility", on ? "visible" : "hidden"); }
@@ -771,7 +771,7 @@ function hit(x, y) {
   play(w.snd, w); buzz(w.big ? 25 : 12);
   updateBeat();
   if (B.hits === 36) $("#finishBtn").classList.add("ready");
-  if (B.hits === GOAL && !B.celebrated) { B.celebrated = true; confetti(50); play("chime"); toast("打夠 108 下，功德圓滿！可以收功啦"); }
+  if (B.hits === GOAL && !B.celebrated) { B.celebrated = true; confetti(50); play("chime"); toast("打滿 108 下，功德圓滿！可以收功了"); }
 }
 stage.addEventListener("pointerdown", (e) => {
   e.preventDefault(); ac();
@@ -782,20 +782,20 @@ stage.addEventListener("keydown", (e) => { if (e.key === " " || e.key === "Enter
 stage.tabIndex = 0;
 
 $("#finishBtn").addEventListener("click", () => {
-  if (!B || B.hits < 1) { toast("未打喎！打多幾下先收功"); return; }
+  if (!B || B.hits < 1) { toast("還沒打喔！多打幾下再收功"); return; }
   startRitual();
 });
 
 /* ---------------- ritual ---------------- */
 const RS = $("#ritualStage");
 const AFFIRM = [
-  "你冇做錯，係佢唔識珍惜你。",
-  "清者自清，時間會講真話。",
-  "你值得被溫柔對待，包括被自己。",
-  "今日放低少少，聽日行得輕鬆啲。",
-  "小人留喺紙度，好運跟住你走。",
-  "你比你想像中更強大，亦都唔使時時強大。",
-  "攞返你嘅精神，用喺值得嘅人同事度。",
+  "你沒有做錯，是他不懂得珍惜你。",
+  "清者自清，時間會說出真相。",
+  "你值得被溫柔對待，包括被你自己。",
+  "今天放下一點點，明天走得輕鬆一點。",
+  "小人留在紙上，好運跟著你走。",
+  "你比想像中更堅強，也不必時時刻刻都堅強。",
+  "把力氣留給值得的人和事。",
 ];
 const TIGER = `<svg class="tiger" id="tiger" viewBox="0 0 200 180" aria-hidden="true">
   <g stroke="${INK}" stroke-width="3.5" stroke-linejoin="round">
@@ -821,23 +821,23 @@ function startRitual() { R = { tries: 0 }; show("ritual"); stepTiger(); }
 
 function stepTiger() {
   setStep(0);
-  RS.innerHTML = `<h2>祭白虎</h2><p>白虎主口舌是非。餵佢食塊肥豬肉，佢食飽咗就唔會再搵你麻煩。</p>${TIGER}<button class="btn btn-red" id="feed">餵佢食豬肉</button>`;
+  RS.innerHTML = `<h2>祭白虎</h2><p>白虎主口舌是非。餵牠吃塊肥豬肉，牠吃飽了就不會再找你麻煩。</p>${TIGER}<button class="btn btn-red" id="feed">餵牠吃豬肉</button>`;
   $("#feed", RS).addEventListener("click", (e) => {
     e.currentTarget.disabled = true; ac();
     const p = document.createElement("div"); p.className = "pork"; p.innerHTML = PORK; RS.appendChild(p);
     setTimeout(() => {
       p.remove(); const t = $("#tiger", RS); t.classList.add("chomp"); play("chomp");
       $("#tEyes", RS).setAttribute("visibility", "hidden"); $("#tHappy", RS).setAttribute("visibility", "visible");
-      setTimeout(() => { play("roar"); RS.querySelector("p").textContent = "白虎食飽咗，話以後唔會再幫小人搞你。"; e.target.replaceWith(Object.assign(document.createElement("button"), { className: "btn btn-jade", textContent: "下一步", onclick: stepBurn })); }, 700);
+      setTimeout(() => { play("roar"); RS.querySelector("p").textContent = "白虎吃飽了，說以後不會再幫小人找你麻煩。"; e.target.replaceWith(Object.assign(document.createElement("button"), { className: "btn btn-jade", textContent: "下一步", onclick: stepBurn })); }, 700);
     }, 680);
   });
 }
 
 function stepBurn() {
   setStep(1);
-  RS.innerHTML = `<h2>化小人</h2><p>將打完嘅紙小人燒咗佢，所有煩惱、委屈一齊化灰。</p>
+  RS.innerHTML = `<h2>化小人</h2><p>把打完的紙小人燒掉，所有煩惱和委屈一起化成灰。</p>
     <div class="burn-wrap" id="burn"><div class="paper">${villainSVG(B.name, typeOf(B.type).acc)}</div><div class="flame"></div></div>
-    <button class="btn btn-red" id="burnBtn">化咗佢</button>`;
+    <button class="btn btn-red" id="burnBtn">燒掉它</button>`;
   const bw = $("#burn", RS);
   applyAcc(bw, typeOf(B.type).acc);
   $$("[data-e]", bw).forEach((g) => g.setAttribute("visibility", g.dataset.e === "ko" ? "visible" : "hidden"));
@@ -851,7 +851,7 @@ function stepBurn() {
         RS.appendChild(s); setTimeout(() => s.remove(), 1500);
       }
       play("chime");
-      RS.querySelector("p").textContent = "化咗！壞嘢變成星星飛走晒。";
+      RS.querySelector("p").textContent = "化掉了！壞事都變成星星飛走了。";
       e.target.replaceWith(Object.assign(document.createElement("button"), { className: "btn btn-jade", textContent: "下一步", onclick: stepBlocks }));
     }, 1700);
   });
@@ -859,7 +859,7 @@ function stepBurn() {
 
 function stepBlocks() {
   setStep(2);
-  RS.innerHTML = `<h2>擲聖杯</h2><p>問下神明：「呢單嘢係咪已經化解？」一平一凸就係聖杯，即係答應咗。</p>
+  RS.innerHTML = `<h2>擲聖杯</h2><p>問問神明：「這件事是不是已經化解了？」一平一凸就是聖杯，代表神明答應了。</p>
     <div class="blocks" id="blocks">${BLOCK(true)}${BLOCK(false)}</div>
     <div class="result-tag" id="res"></div>
     <button class="btn btn-red" id="throw">擲杯</button>`;
@@ -877,10 +877,10 @@ function throwBlocks(e) {
     box.innerHTML = BLOCK(a) + BLOCK(b); play("clack"); buzz(20);
     const res = $("#res", RS);
     if (a !== b) {
-      res.textContent = "聖杯！神明話：搞掂！"; res.style.color = "var(--jade)";
+      res.textContent = "聖杯！神明說：沒問題！"; res.style.color = "var(--jade)";
       setTimeout(finishRitual, 1100);
     } else {
-      res.textContent = a ? "笑杯：神明笑住話，再擲多次" : "陰杯：未夠誠意，再擲多次";
+      res.textContent = a ? "笑杯：神明笑著說，再擲一次" : "陰杯：誠意還不夠，再擲一次";
       res.style.color = "var(--muted)"; btn.disabled = false; btn.textContent = "再擲一次";
     }
   }, 1000);
@@ -893,13 +893,13 @@ function finishRitual() {
   S.history = S.history.slice(0, 50); save();
   confetti(60); play("chime");
   RS.innerHTML = `<div class="blessing">
-      <div class="eyebrow">化解完成 · 大吉利是</div>
+      <div class="eyebrow">化解完成 · 大吉大利</div>
       <div class="big">${pick(AFFIRM)}</div>
       <span class="merit">功德 +10</span>
-      <p>今次打咗 ${B.hits} 下。出完氣，飲啖水，抖下先。</p>
+      <p>這次打了 ${B.hits} 下。氣出完了，喝口水，休息一下。</p>
     </div>
     <div style="display:flex;gap:10px;width:100%">
-      <button class="btn btn-paper" style="flex:1" id="toHome">返主頁</button>
+      <button class="btn btn-paper" style="flex:1" id="toHome">回首頁</button>
       <button class="btn btn-jade" style="flex:1" id="toFish">去敲木魚</button>
     </div>`;
   $("#toHome", RS).onclick = () => { $("#villainName").value = ""; show("home"); };
@@ -923,8 +923,8 @@ const FISH = `<svg viewBox="0 0 240 190" aria-hidden="true">
 const MALLET = `<svg class="mallet" viewBox="0 0 120 120"><rect x="56" y="30" width="9" height="86" rx="4" transform="rotate(-40 60 70)" fill="#B7773F" stroke="${INK}" stroke-width="3"/><ellipse cx="34" cy="34" rx="22" ry="17" transform="rotate(-40 34 34)" fill="#7A4A2A" stroke="${INK}" stroke-width="3"/></svg>`;
 const fishWrap = $("#fishWrap"); fishWrap.innerHTML = FISH + MALLET;
 const FLOATS = ["功德 +1", "功德 +1", "功德 +1", "煩惱 −1", "好運 +1", "小人 −1", "心情 +1", "貴人 +1"];
-const BLESS = ["功德 108！今日諸事順利", "心靜自然涼，好嘢慢慢嚟", "貴人運上升中", "做好自己，其他交俾時間", "今晚一定瞓得好"];
-function renderFish() { $("#fMerit").textContent = S.merit; $("#fToday").textContent = `今日敲咗 ${S.fishToday} 下`; }
+const BLESS = ["功德 108！今天諸事順利", "心靜自然涼，好事慢慢來", "貴人運上升中", "做好自己，其他交給時間", "今晚一定睡得好"];
+function renderFish() { $("#fMerit").textContent = S.merit; $("#fToday").textContent = `今天敲了 ${S.fishToday} 下`; }
 function tok() {
   if (S.fishDay !== todayStr()) { S.fishDay = todayStr(); S.fishToday = 0; }
   S.merit++; S.fishToday++; save();
@@ -962,14 +962,14 @@ function renderBook() {
   $("#histCount").textContent = S.history.length ? `共 ${S.history.length} 次` : "";
   $("#history").innerHTML = S.history.length
     ? S.history.map((h) => `<div class="row"><div class="n"><b></b><span>${typeOf(h.type).label} · ${fmtDate(h.at)}</span></div><div class="h">${h.hits} 下</div></div>`).join("")
-    : `<div class="empty">未有紀錄。打完小人、收功化解之後，會記低喺呢度。</div>`;
+    : `<div class="empty">還沒有紀錄。打完小人、收功化解之後，會記錄在這裡。</div>`;
   $$("#history .row b").forEach((b, i) => { b.textContent = S.history[i].name; });
   resetRowIdle();
 }
 function resetRowIdle() {
   $("#resetRow").innerHTML = `<button class="btn btn-paper btn-sm" id="resetBtn">清除所有紀錄</button>`;
   $("#resetBtn").onclick = () => {
-    $("#resetRow").innerHTML = `<span>真係清除晒功德同紀錄？</span><button class="btn btn-red btn-sm" id="resetYes">清除</button><button class="btn btn-paper btn-sm" id="resetNo">唔好住</button>`;
+    $("#resetRow").innerHTML = `<span>確定要清除所有功德和紀錄？</span><button class="btn btn-red btn-sm" id="resetYes">清除</button><button class="btn btn-paper btn-sm" id="resetNo">先不要</button>`;
     $("#resetYes").onclick = () => { const snd = S.sound; S = defaults(); S.sound = snd; save(); renderBook(); toast("已清除，重新開始"); };
     $("#resetNo").onclick = resetRowIdle;
   };
@@ -978,14 +978,14 @@ function resetRowIdle() {
 let breathT = [];
 $("#breathBtn").addEventListener("click", () => {
   const btn = $("#breathBtn"), ball = $("#ball"), lbl = $("#breathLbl");
-  if (btn.dataset.on) { breathT.forEach(clearTimeout); breathT = []; delete btn.dataset.on; btn.textContent = "開始"; ball.className = "ball"; lbl.textContent = "準備好未？"; return; }
+  if (btn.dataset.on) { breathT.forEach(clearTimeout); breathT = []; delete btn.dataset.on; btn.textContent = "開始"; ball.className = "ball"; lbl.textContent = "準備好了嗎？"; return; }
   btn.dataset.on = "1"; btn.textContent = "停止";
   const cycles = 6; let t = 0;
   for (let i = 0; i < cycles; i++) {
     breathT.push(setTimeout(() => { ball.className = "ball in"; lbl.textContent = "吸氣…"; }, t)); t += 4000;
-    breathT.push(setTimeout(() => { ball.className = "ball out"; lbl.textContent = "慢慢呼…"; }, t)); t += 6000;
+    breathT.push(setTimeout(() => { ball.className = "ball out"; lbl.textContent = "慢慢吐氣…"; }, t)); t += 6000;
   }
-  breathT.push(setTimeout(() => { ball.className = "ball"; lbl.textContent = "做得好"; delete btn.dataset.on; btn.textContent = "再嚟一次"; play("chime"); }, t));
+  breathT.push(setTimeout(() => { ball.className = "ball"; lbl.textContent = "做得好"; delete btn.dataset.on; btn.textContent = "再來一次"; play("chime"); }, t));
 });
 
 /* ---------------- boot ---------------- */
