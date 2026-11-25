@@ -223,6 +223,21 @@ input[type=text] {
 .blessing { background: var(--card); border: 2.5px solid var(--ink); border-radius: var(--r-big); padding: 20px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
 .blessing .big { font-family: var(--f-display); font-size: 24px; line-height: 1.4; color: var(--ink); }
 .blessing .merit { background: var(--jade); color: #fff; border-radius: 99px; padding: 4px 14px; font-weight: 700; }
+.charge { width: 100%; background: var(--lychee); border: 2px dashed var(--ink); border-radius: var(--r-mid); padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; font-size: 15px; line-height: 1.5; }
+.charge b { font-size: 13px; color: var(--lantern); letter-spacing: .1em; }
+.energy {
+  position: absolute; left: 50%; top: 0; width: min(92%, 340px); transform: translateX(-50%);
+  background: var(--card); border: 2.5px solid var(--ink); border-radius: var(--r-big); box-shadow: 0 5px 0 var(--ink);
+  padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; text-align: center; z-index: 5;
+  animation: energy 4.6s ease forwards;
+}
+.energy .big { font-family: var(--f-display); font-size: 21px; line-height: 1.35; }
+.energy .boost { font-size: 14px; color: var(--muted); }
+.batt { position: relative; height: 24px; border: 2.5px solid var(--ink); border-radius: 8px; background: var(--paper); overflow: hidden; }
+.batt i { position: absolute; inset: 0 auto 0 0; background: repeating-linear-gradient(-45deg, var(--jade) 0 8px, #5CC8A8 8px 16px); animation: charge 1s ease-out; }
+.batt span { position: relative; font-size: 13px; font-weight: 700; line-height: 19px; }
+@keyframes charge { from { width: 0; } }
+@keyframes energy { 0% { opacity: 0; transform: translate(-50%, -10px) scale(.9); } 8%, 88% { opacity: 1; transform: translate(-50%, 0) scale(1); } 100% { opacity: 0; transform: translate(-50%, -6px); } }
 
 /* ---------- wooden fish ---------- */
 .fish-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; }
@@ -422,7 +437,7 @@ input[type=text] {
       <div class="audio-ctrl" data-audio></div>
       <button class="switch" id="autoBtn" role="switch" aria-checked="false"><span class="track"></span>自動敲</button>
     </div>
-    <p style="font-size:13px;color:var(--muted)">功德可以解鎖新兵器：10 功德解鎖吱吱槌，接著還有愛的小手、雞毛撢子、拳擊手套、大枕頭、鹹魚、棒球棒。</p>
+    <p style="font-size:13px;color:var(--muted)">每敲 36 下會跳出一張「心情電量」充電卡。功德可以解鎖新兵器：10 功德解鎖吱吱槌，接著還有愛的小手、雞毛撢子、拳擊手套、大枕頭、鹹魚、棒球棒。</p>
   </section>
 
   <!-- ===== BOOK ===== -->
@@ -482,6 +497,8 @@ const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const rand = (a, b) => a + Math.random() * (b - a);
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+/* draw every line once (random order) before any repeats, never the same line twice in a row */
+function bag(arr) { let pool = [], last = null; return () => { if (!pool.length) { pool = arr.slice().sort(() => Math.random() - .5); if (pool[0] === last && pool.length > 1) pool.push(pool.shift()); } return (last = pool.shift()); }; }
 const GOAL = 108;
 const INK = "#3B2A36";
 
@@ -922,7 +939,30 @@ const AFFIRM = [
   "小人留在紙上，好運跟著你走。",
   "你比想像中更堅強，也不必時時刻刻都堅強。",
   "把力氣留給值得的人和事。",
+  "別人的惡意，不是你的價值。",
+  "你已經很努力了，今天先對自己好一點。",
+  "不必讓不值得的人，住進你的心裡。",
+  "委屈會過去，你的善良會留下來。",
+  "真正懂你的人，不需要你解釋。",
+  "跌倒不丟臉，你正在重新站起來。",
+  "把今天的不開心，交給晚風帶走。",
+  "你的好，懂的人自然會看見。",
+  "你不是一個人，身邊還有在乎你的人。",
+  "心放寬一點，路就會變寬一點。",
 ];
+const CHARGE = [
+  "起身伸個懶腰，把肩膀放鬆下來。",
+  "倒一杯溫水，慢慢喝完。",
+  "深呼吸三次，每次吐氣都比吸氣長一點。",
+  "傳個訊息給一個讓你安心的人。",
+  "今晚早點睡，手機放遠一點。",
+  "吃點喜歡的東西，好好犒賞自己。",
+  "出門走走五分鐘，抬頭看看天空。",
+  "聽一首會讓你想跟著哼的歌。",
+  "寫下今天一件小小的好事。",
+  "對鏡子裡的自己說：「辛苦了，謝謝你。」",
+];
+const affirmNext = bag(AFFIRM), chargeNext = bag(CHARGE);
 const TIGER = `<svg class="tiger" id="tiger" viewBox="0 0 200 180" aria-hidden="true">
   <g stroke="${INK}" stroke-width="3.5" stroke-linejoin="round">
     <path d="M36 52 L30 14 L70 34Z" fill="#FFB347"/><path d="M164 52 L170 14 L130 34Z" fill="#FFB347"/>
@@ -1021,8 +1061,9 @@ function finishRitual() {
   confetti(60); play("fanfare");
   RS.innerHTML = `<div class="blessing">
       <div class="eyebrow">化解完成 · 大吉大利</div>
-      <div class="big">${pick(AFFIRM)}</div>
+      <div class="big">${affirmNext()}</div>
       <span class="merit">功德 +10</span>
+      <div class="charge"><b>今日充電小任務</b><span>${chargeNext()}</span></div>
       <p>這次打了 ${B.hits} 下。氣出完了，喝口水，休息一下。</p>
     </div>
     <div style="display:flex;gap:10px;width:100%">
@@ -1050,7 +1091,28 @@ const FISH = `<svg viewBox="0 0 240 190" aria-hidden="true">
 const MALLET = `<svg class="mallet" viewBox="0 0 120 120"><rect x="56" y="30" width="9" height="86" rx="4" transform="rotate(-40 60 70)" fill="#B7773F" stroke="${INK}" stroke-width="3"/><ellipse cx="34" cy="34" rx="22" ry="17" transform="rotate(-40 34 34)" fill="#7A4A2A" stroke="${INK}" stroke-width="3"/></svg>`;
 const fishWrap = $("#fishWrap"); fishWrap.innerHTML = FISH + MALLET;
 const FLOATS = ["功德 +1", "功德 +1", "功德 +1", "煩惱 −1", "好運 +1", "小人 −1", "心情 +1", "貴人 +1"];
-const BLESS = ["功德 108！今天諸事順利", "心靜自然涼，好事慢慢來", "貴人運上升中", "做好自己，其他交給時間", "今晚一定睡得好"];
+const BLESS = [
+  "今天諸事順利", "心靜自然涼，好事慢慢來", "貴人運上升中", "做好自己，其他交給時間", "今晚一定睡得好",
+  "煩惱清空，好運加載中", "每敲一下，心就安定一點", "今天的你，比昨天更強大", "平安喜樂，正在路上", "小人退散，貴人報到",
+  "心若安定，處處都是好風景", "福氣滿滿，記得收下", "好事正在悄悄發生", "慢慢來，一切都來得及", "你值得所有美好的事",
+];
+const BOOST = [
+  "幸運色：薄荷綠", "幸運色：芒果黃", "今日關鍵字：放下", "今日關鍵字：勇氣", "貴人方位：東南方",
+  "今天適合：早點睡覺", "今天適合：吃點甜的", "今天適合：找好朋友聊天", "今日小確幸：一杯手搖飲", "今日小確幸：泡個熱水澡",
+];
+const blessNext = bag(BLESS), boostNext = bag(BOOST);
+let energyT = 0;
+function showEnergy() {
+  const n = S.fishToday, full = n >= 108, pct = Math.min(100, Math.round(n / 108 * 100));
+  const old = $("#fishFx .energy"); if (old) old.remove(); clearTimeout(energyT);
+  const c = document.createElement("div"); c.className = "energy";
+  c.innerHTML = `<div class="eyebrow">今天敲了 ${n} 下 · ${full ? "電量滿格" : "充電中"}</div>
+    <div class="batt" aria-label="心情電量 ${pct}%"><i style="width:${pct}%"></i><span>心情電量 ${pct}%</span></div>
+    <div class="big"></div><div class="boost"></div>`;
+  $(".big", c).textContent = blessNext(); $(".boost", c).textContent = boostNext();
+  $("#fishFx").appendChild(c); energyT = setTimeout(() => c.remove(), 4600);
+  if (n % 108 === 0) { confetti(40); play("fanfare"); } else play("chime");
+}
 function renderFish() { $("#fMerit").textContent = S.merit; $("#fToday").textContent = `今天敲了 ${S.fishToday} 下`; }
 function tok() {
   if (S.fishDay !== todayStr()) { S.fishDay = todayStr(); S.fishToday = 0; }
@@ -1064,7 +1126,7 @@ function tok() {
   $("#fishFx").appendChild(f); setTimeout(() => f.remove(), 1150);
   play("wood"); buzz(8);
   renderFish();
-  if (S.merit % 108 === 0) { confetti(40); play("fanfare"); toast(pick(BLESS)); }
+  if (S.fishToday % 36 === 0) showEnergy();
   const unlocked = WEAPONS.find((w) => w.cost === S.merit && w.cost > 0);
   if (unlocked) { play("unlock"); toast(`解鎖新兵器：${unlocked.name}！`); }
 }
